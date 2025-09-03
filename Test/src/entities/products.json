@@ -1,0 +1,118 @@
+
+{
+  "name": "products",
+  "options": {
+    "validator": {
+      "$jsonSchema": {
+        "bsonType": "object",
+        "required": ["productId", "name", "category", "price", "salePrice", "stock", "imageUrl", "quantity", "unit", "createdAt"],
+        "properties": {
+          "productId": {
+            "bsonType": "string",
+            "description": "Identifiant unique du produit"
+          },
+          "name": {
+            "bsonType": "string",
+            "description": "Nom du produit cosmétique"
+          },
+          "category": {
+            "bsonType": "string",
+            "enum": ["soins-visage", "maquillage", "soins-corps", "parfums", "soins-cheveux", "accessoires"],
+            "description": "Catégorie du produit"
+          },
+          "description": {
+            "bsonType": "string",
+            "description": "Description détaillée du produit"
+          },
+          "price": {
+            "bsonType": "number",
+            "minimum": 0,
+            "description": "Prix de vente original en ligne"
+          },
+          "discountPercentage": {
+            "bsonType": "number",
+            "minimum": 0,
+            "maximum": 100,
+            "description": "Pourcentage de réduction appliqué"
+          },
+          "salePrice": {
+            "bsonType": "number",
+            "minimum": 0,
+            "description": "Prix de vente final après réduction"
+          },
+          "stock": {
+            "bsonType": "int",
+            "minimum": 0,
+            "description": "Quantité en stock"
+          },
+          "quantity": {
+            "bsonType": "number",
+            "minimum": 0,
+            "description": "Quantité de produit dans le contenant (ex: 50 pour 50ml)"
+          },
+          "unit": {
+            "bsonType": "string",
+            "enum": ["ml", "g", "pcs"],
+            "description": "Unité de mesure (ml, g, pcs)"
+          },
+          "weight": {
+            "bsonType": "string",
+            "description": "Poids ou volume du produit formaté (ex: 50ml, 30g)"
+          },
+          "referencePrice": {
+            "bsonType": "number",
+            "minimum": 0,
+            "description": "Prix de référence trouvé sur internet"
+          },
+          "referenceQuantity": {
+            "bsonType": "number",
+            "minimum": 0,
+            "description": "Quantité de référence trouvée sur internet"
+          },
+          "pricePerUnit": {
+            "bsonType": "number",
+            "minimum": 0,
+            "description": "Prix par unité calculé automatiquement"
+          },
+          "brand": {
+            "bsonType": "string",
+            "description": "Marque du produit"
+          },
+          "imageUrl": {
+            "bsonType": "string",
+            "description": "URL de l'image du produit"
+          },
+          "driveImageId": {
+            "bsonType": "string",
+            "description": "ID de l'image dans Google Drive"
+          },
+          "location": {
+            "bsonType": "string",
+            "description": "Localisation du produit - numéro de carton de stockage"
+          },
+          "isActive": {
+            "bsonType": "bool",
+            "description": "Produit actif dans la boutique"
+          },
+          "creator": {
+            "bsonType": "string",
+            "description": "Propriétaire qui a ajouté le produit"
+          },
+          "createdAt": {
+            "bsonType": "string",
+            "title": "datetime",
+            "description": "Date de création ISO 8601"
+          },
+          "updatedAt": {
+            "bsonType": "string",
+            "title": "datetime",
+            "description": "Date de mise à jour ISO 8601"
+          }
+        },
+        "additionalProperties": true
+      }
+    },
+    "validationLevel": "moderate",
+    "validationAction": "warn"
+  }
+}

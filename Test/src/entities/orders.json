@@ -1,0 +1,84 @@
+
+{
+  "name": "orders",
+  "options": {
+    "validator": {
+      "$jsonSchema": {
+        "bsonType": "object",
+        "required": ["orderId", "customerInfo", "items", "totalAmount", "status", "createdAt"],
+        "properties": {
+          "orderId": {
+            "bsonType": "string",
+            "description": "Identifiant unique de la commande"
+          },
+          "customerInfo": {
+            "bsonType": "object",
+            "required": ["name", "email", "phone", "address"],
+            "properties": {
+              "name": {
+                "bsonType": "string"
+              },
+              "email": {
+                "bsonType": "string"
+              },
+              "phone": {
+                "bsonType": "string"
+              },
+              "address": {
+                "bsonType": "object",
+                "required": ["street", "city", "postalCode"],
+                "properties": {
+                  "street": { "bsonType": "string" },
+                  "city": { "bsonType": "string" },
+                  "postalCode": { "bsonType": "string" },
+                  "country": { "bsonType": "string" }
+                }
+              }
+            }
+          },
+          "items": {
+            "bsonType": "array",
+            "items": {
+              "bsonType": "object",
+              "required": ["productId", "name", "quantity", "price", "imageUrl"],
+              "properties": {
+                "productId": { "bsonType": "string" },
+                "name": { "bsonType": "string" },
+                "quantity": { "bsonType": "int", "minimum": 1 },
+                "price": { "bsonType": "number", "minimum": 0 },
+                "imageUrl": { "bsonType": "string" }
+              }
+            }
+          },
+          "totalAmount": {
+            "bsonType": "number",
+            "minimum": 0,
+            "description": "Montant total de la commande"
+          },
+          "status": {
+            "bsonType": "string",
+            "enum": ["pending", "confirmed", "shipped", "delivered", "cancelled"],
+            "description": "Statut de la commande"
+          },
+          "notes": {
+            "bsonType": "string",
+            "description": "Notes supplémentaires"
+          },
+          "createdAt": {
+            "bsonType": "string",
+            "title": "datetime",
+            "description": "Date de création de la commande"
+          },
+          "updatedAt": {
+            "bsonType": "string",
+            "title": "datetime",
+            "description": "Date de mise à jour"
+          }
+        },
+        "additionalProperties": true
+      }
+    },
+    "validationLevel": "moderate",
+    "validationAction": "warn"
+  }
+}
