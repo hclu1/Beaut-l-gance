@@ -1,0 +1,12 @@
+# Fichiers d'environnement sensibles
+.env
+.env.local
+.env.*.local
+
+# Node modules
+node_modules/
+
+# Build output
+.next/
+dist/
+out/
