@@ -115,7 +115,7 @@ const addToCart = async (product: Product) => {
     setCart([...cart, { ...product, quantite_achat: 1 }]);
   }
 
-  // Mettre à jour le stock dans Supabase ET localement
+  // NOUVEAU : Mettre à jour le stock dans Supabase
   try {
     await ProductService.updateStock(product.id, product.quantite_reelle - 1);
     setProducts(products.map(p =>
