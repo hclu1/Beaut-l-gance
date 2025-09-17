@@ -100,25 +100,32 @@ const [orders, setOrders] = useState<Order[]>(() =>
   };
 
   // Gestion panier : ajout produit
-  const addToCart = (product: Product) => {
-    if (product.quantite_reelle <= 0) {
-      alert('Produit en rupture de stock');
-      return;
-    }
+  const addToCart = async (product: Product) => {
+  if (product.quantite_reelle <= 0) {
+    alert('Produit en rupture de stock');
+    return;
+  }
 
-    const index = cart.findIndex(item => item.id === product.id);
-    if (index !== -1) {
-      const updatedCart = [...cart];
-      updatedCart[index].quantite_achat += 1;
-      setCart(updatedCart);
-    } else {
-      setCart([...cart, { ...product, quantite_achat: 1 }]);
-    }
+  const index = cart.findIndex(item => item.id === product.id);
+  if (index !== -1) {
+    const updatedCart = [...cart];
+    updatedCart[index].quantite_achat += 1;
+    setCart(updatedCart);
+  } else {
+    setCart([...cart, { ...product, quantite_achat: 1 }]);
+  }
 
+  // Mettre à jour le stock dans Supabase ET localement
+  try {
+    await ProductService.updateStock(product.id, product.quantite_reelle - 1);
     setProducts(products.map(p =>
       p.id === product.id ? { ...p, quantite_reelle: p.quantite_reelle - 1 } : p
     ));
-  };
+  } catch (error) {
+    console.error('Erreur mise à jour stock:', error);
+    alert('Erreur lors de la mise à jour du stock');
+  }
+};
 
   // Supprimer un item du panier
   const removeFromCart = (index: number) => {
