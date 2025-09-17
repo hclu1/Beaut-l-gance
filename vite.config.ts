@@ -1,4 +1,3 @@
-
 import react from '@vitejs/plugin-react-swc'
 import { defineConfig, UserConfig } from 'vite'
 
@@ -18,6 +17,20 @@ export default defineConfig(({ mode }) => {
     define = {
       'process.env.NODE_ENV': '"development"',
       __DEV__: 'true',
+      global: 'globalThis',
+    }
+  } else {
+    // Configuration pour production
+    build = {
+      rollupOptions: {
+        output: {
+          manualChunks: undefined,
+        },
+      },
+    }
+
+    define = {
+      global: 'globalThis',
     }
   }
 
@@ -31,4 +44,3 @@ export default defineConfig(({ mode }) => {
     },
   }
 })
-
