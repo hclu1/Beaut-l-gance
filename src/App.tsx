@@ -1,6 +1,5 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-
 import { Product, Order, CartItem, SyncData } from './types';
 import { initialProducts, SHOP_CONFIG, STORAGE_KEYS } from './constants';
 import { 
@@ -8,7 +7,6 @@ import {
   loadFromStorage, 
   extractSyncDataFromUrl,
 } from './utils';
-
 import Header from './components/Header';
 import CategoryFilter from './components/CategoryFilter';
 import ProductCard from './components/ProductCard';
@@ -17,6 +15,7 @@ import FloatingCartIcon from './components/FloatingCartIcon';
 import CheckoutModal from './components/CheckoutModal';
 import DiscreteAdminButton from './components/DiscreteAdminButton';
 import AdminPanel from './components/AdminPanel';
+import { ProductService } from './services/productService'; // PLACEZ L'IMPORT ICI
 
 const App: React.FC = () => {
   const [selectedCat, setSelectedCat] = useState<string | null>(null);
@@ -31,6 +30,22 @@ const App: React.FC = () => {
   const [orders, setOrders] = useState<Order[]>(() =>
     loadFromStorage(STORAGE_KEYS.ORDERS, [])
   );
+
+  // TEST SUPABASE - PLACEZ LE useEffect ICI, DANS LE COMPOSANT
+  useEffect(() => {
+    console.log('Test connexion Supabase...');
+    
+    ProductService.getAllProducts()
+      .then(data => {
+        console.log('Connexion réussie! Produits:', data);
+      })
+      .catch(err => {
+        console.error('Erreur connexion:', err);
+      });
+  }, []);
+
+  // ... reste de votre code existant ...
+
 
   // Synchronisation des données via URL (QR code) au chargement
   useEffect(() => {

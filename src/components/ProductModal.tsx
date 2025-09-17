@@ -17,20 +17,25 @@ const ProductModal: React.FC<ProductModalProps> = ({ product, onSave, onClose })
     nom: '',
     marque: '',
     categorie: categories[0],
-    prix_reference: 0,
-    quantite_web: 0,
-    quantite_reelle: 0,
-    stock: 0,
-    reduction: 0,
+    prix_reference: '0',
+    quantite_web: '0',
+    quantite_reelle: '0',
+    stock: '0',
+    reduction: '0',
     description: '',
     emplacement: '',
     image: 'https://images.pexels.com/photos/2533266/pexels-photo-2533266.jpeg?auto=compress&cs=tinysrgb&w=400'
   });
 
   const calculateFinalPrice = () => {
-    if (formData.quantite_web > 0 && formData.quantite_reelle > 0 && formData.prix_reference > 0) {
-      const prixProrata = (formData.prix_reference * formData.quantite_reelle) / formData.quantite_web;
-      const prixFinal = prixProrata * (1 - (formData.reduction || 0) / 100);
+    const prixRef = parseFloat(formData.prix_reference) || 0;
+    const qtyWeb = parseFloat(formData.quantite_web) || 0;
+    const qtyReelle = parseFloat(formData.quantite_reelle) || 0;
+    const reduction = parseFloat(formData.reduction) || 0;
+
+    if (qtyWeb > 0 && qtyReelle > 0 && prixRef > 0) {
+      const prixProrata = (prixRef * qtyReelle) / qtyWeb;
+      const prixFinal = prixProrata * (1 - reduction / 100);
       return prixFinal.toFixed(2);
     }
     return '0.00';
@@ -224,7 +229,7 @@ const ProductModal: React.FC<ProductModalProps> = ({ product, onSave, onClose })
             </div>
           </div>
 
-          {formData.quantite_web > 0 && formData.quantite_reelle > 0 && formData.prix_reference > 0 && (
+          {parseFloat(formData.quantite_web) > 0 && parseFloat(formData.quantite_reelle) > 0 && parseFloat(formData.prix_reference) > 0 && (
             <div className="bg-purple-50 p-4 rounded-lg border-l-4 border-purple-400">
               <h4 className="font-semibold text-purple-800 mb-2 flex items-center gap-2">
                 💰 Prix Calculé
@@ -234,8 +239,8 @@ const ProductModal: React.FC<ProductModalProps> = ({ product, onSave, onClose })
               </div>
               <div className="text-xs text-purple-600 space-y-1">
                 <div>• Prix web: {formData.prix_reference}€ pour {formData.quantite_web}ml/g</div>
-                <div>• Prix au prorata: {((formData.prix_reference * formData.quantite_reelle) / formData.quantite_web).toFixed(2)}€ pour {formData.quantite_reelle}ml/g</div>
-                {formData.reduction > 0 && (
+                <div>• Prix au prorata: {((parseFloat(formData.prix_reference) * parseFloat(formData.quantite_reelle)) / parseFloat(formData.quantite_web)).toFixed(2)}€ pour {formData.quantite_reelle}ml/g</div>
+                {parseFloat(formData.reduction) > 0 && (
                   <div>• Avec réduction {formData.reduction}%: {calculateFinalPrice()}€</div>
                 )}
               </div>
