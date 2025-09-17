@@ -24,25 +24,27 @@ const App: React.FC = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [showCheckout, setShowCheckout] = useState(false);
 
-  const [products, setProducts] = useState<Product[]>(() =>
-    loadFromStorage(STORAGE_KEYS.PRODUCTS, initialProducts)
-  );
-  const [orders, setOrders] = useState<Order[]>(() =>
-    loadFromStorage(STORAGE_KEYS.ORDERS, [])
-  );
+ const [products, setProducts] = useState<Product[]>([]);
+const [orders, setOrders] = useState<Order[]>(() =>
+  loadFromStorage(STORAGE_KEYS.ORDERS, [])
+);
+
 
   // TEST SUPABASE - PLACEZ LE useEffect ICI, DANS LE COMPOSANT
-  useEffect(() => {
-    console.log('Test connexion Supabase...');
-    
-    ProductService.getAllProducts()
-      .then(data => {
-        console.log('Connexion réussie! Produits:', data);
-      })
-      .catch(err => {
-        console.error('Erreur connexion:', err);
-      });
-  }, []);
+ useEffect(() => {
+  console.log('Chargement des produits depuis Supabase...');
+  
+  ProductService.getAllProducts()
+    .then(data => {
+      setProducts(data);
+      console.log('Produits chargés:', data);
+    })
+    .catch(err => {
+      console.error('Erreur chargement produits:', err);
+      // Fallback vers données initiales en cas d'erreur
+      setProducts(initialProducts);
+    });
+}, []);
 
   // ... reste de votre code existant ...
 
