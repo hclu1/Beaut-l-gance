@@ -100,7 +100,7 @@ const [orders, setOrders] = useState<Order[]>(() =>
   };
 
   // Gestion panier : ajout produit
-  const addToCart = async (product: Product) => {
+const addToCart = async (product: Product) => {
   if (product.quantite_reelle <= 0) {
     alert('Produit en rupture de stock');
     return;
