@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+https://beaut-l-gance-jnc17e6tu-herves-projects-1e3c484d.vercel.app/import React, { useState } from 'react';
 import { Product, Order } from '../types';
 import { ProductService } from '../services/productService';
 
@@ -301,21 +301,21 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
         {/* Contenu selon l'onglet actif */}
         {activeTab === 'products' ? (
           <>
-            {/* Statistiques Produits */}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
-              <div className="bg-blue-100 p-4 rounded">
-                <h3 className="font-semibold">Produits</h3>
-                <p className="text-2xl font-bold">{products.length}</p>
+            {/* Statistiques Produits - EN LIGNE pour gagner de la place */}
+            <div className="grid grid-cols-3 gap-3 mb-6">
+              <div className="bg-blue-100 p-3 rounded text-center">
+                <h3 className="font-semibold text-sm">Produits</h3>
+                <p className="text-xl font-bold">{products.length}</p>
               </div>
-              <div className="bg-purple-100 p-4 rounded">
-                <h3 className="font-semibold">Stock Total</h3>
-                <p className="text-2xl font-bold">
+              <div className="bg-purple-100 p-3 rounded text-center">
+                <h3 className="font-semibold text-sm">Stock Total</h3>
+                <p className="text-xl font-bold">
                   {products.reduce((sum, p) => sum + (p.stock_unite || 0), 0)}
                 </p>
               </div>
-              <div className="bg-orange-100 p-4 rounded">
-                <h3 className="font-semibold">Valeur Stock</h3>
-                <p className="text-2xl font-bold">
+              <div className="bg-orange-100 p-3 rounded text-center">
+                <h3 className="font-semibold text-sm">Valeur Stock</h3>
+                <p className="text-xl font-bold">
                   {products.reduce((sum, p) => sum + (calculateRealPrice(p) * (p.stock_unite || 0)), 0).toFixed(0)}€
                 </p>
               </div>
@@ -336,6 +336,58 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
 
                   return (
                     <div className="space-y-4">
+                      {/* Section image EN PREMIER */}
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                          Image du produit
+                        </label>
+                        
+                        {/* Zone d'upload */}
+                        <div className="border-2 border-dashed border-gray-300 rounded-lg p-4 text-center">
+                          {currentProduct.image_url ? (
+                            <div className="space-y-2">
+                              <img 
+                                src={currentProduct.image_url} 
+                                alt="Aperçu" 
+                                className="w-32 h-32 object-cover rounded border mx-auto"
+                              />
+                              <button
+                                type="button"
+                                onClick={() => setCurrentProduct({image_url: ''})}
+                                className="text-red-500 text-sm hover:underline"
+                              >
+                                Supprimer l'image
+                              </button>
+                            </div>
+                          ) : (
+                            <div className="space-y-2">
+                              <div className="text-gray-400 text-4xl">📸</div>
+                              <p className="text-gray-500">Cliquez pour ajouter une image</p>
+                            </div>
+                          )}
+                          
+                          <input
+                            type="file"
+                            accept="image/*"
+                            onChange={(e) => {
+                              const file = e.target.files?.[0];
+                              if (file) {
+                                handleImageUpload(file, !!editingProduct);
+                              }
+                            }}
+                            className="mt-2 block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded file:border-0 file:text-sm file:font-semibold file:bg-purple-50 file:text-purple-700 hover:file:bg-purple-100"
+                            disabled={uploadingImage}
+                          />
+                          
+                          {uploadingImage && (
+                            <p className="text-purple-600 text-sm mt-2">
+                              Upload en cours...
+                            </p>
+                          )}
+                        </div>
+                      </div>
+
+                      {/* Champs du produit avec labels clairs */}
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <input
                           type="text"
@@ -413,57 +465,6 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
                           <div className="font-bold text-green-600">
                             {calculateRealPrice(currentProduct).toFixed(2)}€
                           </div>
-                        </div>
-                      </div>
-
-                      {/* Section image */}
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-2">
-                          Image du produit
-                        </label>
-                        
-                        {/* Zone d'upload */}
-                        <div className="border-2 border-dashed border-gray-300 rounded-lg p-4 text-center">
-                          {currentProduct.image_url ? (
-                            <div className="space-y-2">
-                              <img 
-                                src={currentProduct.image_url} 
-                                alt="Aperçu" 
-                                className="w-32 h-32 object-cover rounded border mx-auto"
-                              />
-                              <button
-                                type="button"
-                                onClick={() => setCurrentProduct({image_url: ''})}
-                                className="text-red-500 text-sm hover:underline"
-                              >
-                                Supprimer l'image
-                              </button>
-                            </div>
-                          ) : (
-                            <div className="space-y-2">
-                              <div className="text-gray-400 text-4xl">📸</div>
-                              <p className="text-gray-500">Cliquez pour ajouter une image</p>
-                            </div>
-                          )}
-                          
-                          <input
-                            type="file"
-                            accept="image/*"
-                            onChange={(e) => {
-                              const file = e.target.files?.[0];
-                              if (file) {
-                                handleImageUpload(file, !!editingProduct);
-                              }
-                            }}
-                            className="mt-2 block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded file:border-0 file:text-sm file:font-semibold file:bg-purple-50 file:text-purple-700 hover:file:bg-purple-100"
-                            disabled={uploadingImage}
-                          />
-                          
-                          {uploadingImage && (
-                            <p className="text-purple-600 text-sm mt-2">
-                              Upload en cours...
-                            </p>
-                          )}
                         </div>
                       </div>
 
