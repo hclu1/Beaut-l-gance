@@ -15,7 +15,7 @@ import FloatingCartIcon from './components/FloatingCartIcon';
 import CheckoutModal from './components/CheckoutModal';
 import DiscreteAdminButton from './components/DiscreteAdminButton';
 import AdminPanel from './components/AdminPanel';
-import { ProductService } from './services/productService'; // PLACEZ L'IMPORT ICI
+import { ProductService } from './services/productService';
 
 const App: React.FC = () => {
   const [selectedCat, setSelectedCat] = useState<string | null>(null);
@@ -24,30 +24,38 @@ const App: React.FC = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [showCheckout, setShowCheckout] = useState(false);
 
- const [products, setProducts] = useState<Product[]>([]);
-const [orders, setOrders] = useState<Order[]>(() =>
-  loadFromStorage(STORAGE_KEYS.ORDERS, [])
-);
-
-
-  // TEST SUPABASE - PLACEZ LE useEffect ICI, DANS LE COMPOSANT
- useEffect(() => {
-  console.log('Chargement des produits depuis Supabase...');
+  // ✅ Produits chargés depuis Supabase uniquement
+  const [products, setProducts] = useState<Product[]>([]);
   
-  ProductService.getAllProducts()
-    .then(data => {
-      setProducts(data);
-      console.log('Produits chargés:', data);
-    })
-    .catch(err => {
-      console.error('Erreur chargement produits:', err);
-      // Fallback vers données initiales en cas d'erreur
-      setProducts(initialProducts);
-    });
-}, []);
+  // ✅ Commandes chargées depuis localStorage pour le moment
+  const [orders, setOrders] = useState<Order[]>(() =>
+    loadFromStorage(STORAGE_KEYS.ORDERS, [])
+  );
 
-  // ... reste de votre code existant ...
+  // ✅ Chargement initial des produits depuis Supabase
+  useEffect(() => {
+    console.log('Chargement des produits depuis Supabase...');
+    
+    ProductService.getAllProducts()
+      .then(data => {
+        setProducts(data);
+        console.log('Produits chargés depuis Supabase:', data.length);
+      })
+      .catch(err => {
+        console.error('Erreur chargement produits:', err);
+        // Fallback vers données initiales en cas d'erreur
+        setProducts(initialProducts);
+        console.log('Fallback vers données initiales');
+      });
 
+    // ✅ Écouter l'événement de fermeture admin
+    const handleCloseAdmin = () => setAdmin(false);
+    window.addEventListener('closeAdmin', handleCloseAdmin);
+    
+    return () => {
+      window.removeEventListener('closeAdmin', handleCloseAdmin);
+    };
+  }, []);
 
   // Synchronisation des données via URL (QR code) au chargement
   useEffect(() => {
@@ -69,10 +77,8 @@ const [orders, setOrders] = useState<Order[]>(() =>
     }
   }, []);
 
-  // Sauvegarde automatique des produits dans le localStorage
-  useEffect(() => {
-    saveToStorage(STORAGE_KEYS.PRODUCTS, products);
-  }, [products]);
+  // ✅ SUPPRIMÉ : Plus de sauvegarde automatique des produits dans localStorage
+  // Les produits sont maintenant gérés uniquement dans Supabase
 
   // Sauvegarde automatique des commandes dans le localStorage
   useEffect(() => {
@@ -99,49 +105,77 @@ const [orders, setOrders] = useState<Order[]>(() =>
     alert('Magasin réinitialisé avec les données d\'origine');
   };
 
-  // Gestion panier : ajout produit
-const addToCart = async (product: Product) => {
-  if (product.quantite_reelle <= 0) {
-    alert('Produit en rupture de stock');
-    return;
-  }
-
-  const index = cart.findIndex(item => item.id === product.id);
-  if (index !== -1) {
-    const updatedCart = [...cart];
-    updatedCart[index].quantite_achat += 1;
-    setCart(updatedCart);
-  } else {
-    setCart([...cart, { ...product, quantite_achat: 1 }]);
-  }
-
-  // NOUVEAU : Mettre à jour le stock dans Supabase
-  try {
-    await ProductService.updateStock(product.id, product.quantite_reelle - 1);
-    setProducts(products.map(p =>
-      p.id === product.id ? { ...p, quantite_reelle: p.quantite_reelle - 1 } : p
-    ));
-  } catch (error) {
-    console.error('Erreur mise à jour stock:', error);
-    alert('Erreur lors de la mise à jour du stock');
-  }
-};
-
-  // Supprimer un item du panier
-  const removeFromCart = (index: number) => {
-    const removedItem = cart[index];
-    setCart(cart.filter((_, i) => i !== index));
-    setProducts(products.map(p =>
-      p.id === removedItem.id ? { ...p, quantite_reelle: p.quantite_reelle + removedItem.quantite_achat } : p
-    ));
+  // ✅ Fonction pour recharger les produits depuis Supabase
+  const reloadProductsFromSupabase = async () => {
+    try {
+      console.log('Rechargement des produits depuis Supabase...');
+      const data = await ProductService.getAllProducts();
+      setProducts(data);
+      console.log('Produits rechargés:', data.length);
+    } catch (error) {
+      console.error('Erreur rechargement produits:', error);
+    }
   };
 
-  // Modifier la quantité d’un item dans le panier
-  const updateCartQuantity = (index: number, newQuantity: number) => {
+  // ✅ Gestion panier : ajout produit avec mise à jour Supabase
+  const addToCart = async (product: Product) => {
+    if (product.quantite_reelle <= 0) {
+      alert('Produit en rupture de stock');
+      return;
+    }
+
+    const index = cart.findIndex(item => item.id === product.id);
+    if (index !== -1) {
+      const updatedCart = [...cart];
+      updatedCart[index].quantite_achat += 1;
+      setCart(updatedCart);
+    } else {
+      setCart([...cart, { ...product, quantite_achat: 1 }]);
+    }
+
+    // ✅ Mettre à jour le stock dans Supabase ET l'état local
+    try {
+      const newStock = product.quantite_reelle - 1;
+      await ProductService.updateStock(product.id, newStock);
+      
+      // Mettre à jour l'état local seulement après succès Supabase
+      setProducts(products.map(p =>
+        p.id === product.id ? { ...p, quantite_reelle: newStock } : p
+      ));
+    } catch (error) {
+      console.error('Erreur mise à jour stock:', error);
+      alert('Erreur lors de la mise à jour du stock');
+    }
+  };
+
+  // ✅ Supprimer un item du panier avec mise à jour stock Supabase
+  const removeFromCart = async (index: number) => {
+    const removedItem = cart[index];
+    setCart(cart.filter((_, i) => i !== index));
+
+    // Remettre le stock dans Supabase
+    try {
+      const product = products.find(p => p.id === removedItem.id);
+      if (product) {
+        const newStock = product.quantite_reelle + removedItem.quantite_achat;
+        await ProductService.updateStock(product.id, newStock);
+        
+        setProducts(products.map(p =>
+          p.id === removedItem.id ? { ...p, quantite_reelle: newStock } : p
+        ));
+      }
+    } catch (error) {
+      console.error('Erreur remise stock:', error);
+    }
+  };
+
+  // ✅ Modifier la quantité d'un item dans le panier avec Supabase
+  const updateCartQuantity = async (index: number, newQuantity: number) => {
     if (newQuantity <= 0) {
       removeFromCart(index);
       return;
     }
+    
     const item = cart[index];
     const diff = newQuantity - item.quantite_achat;
 
@@ -155,13 +189,23 @@ const addToCart = async (product: Product) => {
     updatedCart[index].quantite_achat = newQuantity;
     setCart(updatedCart);
 
-    setProducts(products.map(p =>
-      p.id === item.id ? { ...p, quantite_reelle: p.quantite_reelle - diff } : p
-    ));
+    // Mettre à jour le stock dans Supabase
+    try {
+      if (product) {
+        const newStock = product.quantite_reelle - diff;
+        await ProductService.updateStock(product.id, newStock);
+        
+        setProducts(products.map(p =>
+          p.id === item.id ? { ...p, quantite_reelle: newStock } : p
+        ));
+      }
+    } catch (error) {
+      console.error('Erreur mise à jour stock:', error);
+    }
   };
 
-  // Finalisation commande
-  const handleCheckout = (customerInfo: any) => {
+  // ✅ Finalisation commande avec sauvegarde Supabase
+  const handleCheckout = async (customerInfo: any) => {
     const total = cart.reduce((sum, item) =>
       sum + (item.prix_reference * (1 - item.reduction / 100) * item.quantite_achat), 0
     );
@@ -180,15 +224,31 @@ const addToCart = async (product: Product) => {
       preparedItems: {}
     };
 
-    setOrders([newOrder, ...orders]);
-    setCart([]);
-    setShowCheckout(false);
+    try {
+      // ✅ Sauvegarder la commande dans Supabase
+      await ProductService.saveOrder(newOrder);
+      console.log('Commande sauvegardée dans Supabase');
+      
+      // Puis mettre à jour l'état local
+      setOrders([newOrder, ...orders]);
+      setCart([]);
+      setShowCheckout(false);
 
-    const customerName = customerInfo.nom && customerInfo.prenom
-      ? `${customerInfo.prenom} ${customerInfo.nom}`
-      : customerInfo.nom || customerInfo.prenom || 'Client';
+      const customerName = customerInfo.nom && customerInfo.prenom
+        ? `${customerInfo.prenom} ${customerInfo.nom}`
+        : customerInfo.nom || customerInfo.prenom || 'Client';
 
-    alert(`Commande validée pour ${customerName}!\nNuméro: #${newOrder.id}\nPaiement en espèces à la livraison.`);
+      alert(`✅ Commande validée pour ${customerName}!\nNuméro: #${newOrder.id}\nSauvegardée dans Supabase.`);
+    } catch (error) {
+      console.error('Erreur sauvegarde commande:', error);
+      
+      // En cas d'erreur Supabase, sauvegarder quand même localement
+      setOrders([newOrder, ...orders]);
+      setCart([]);
+      setShowCheckout(false);
+      
+      alert(`⚠️ Commande validée mais erreur de sauvegarde Supabase.\nCommande sauvegardée localement.`);
+    }
   };
 
   // Filtrage des produits selon catégorie et recherche
@@ -227,7 +287,7 @@ const addToCart = async (product: Product) => {
             {filteredProducts.map((product, index) => (
               <motion.div
                 key={product.id}
-                initial={{ opacity: 0, y: 20 }}
+                initial={{ opacity: 0, y:20 }}
                 animate={{ opacity: 1, y: 0 }}
                 exit={{ opacity: 0, y: -20 }}
                 transition={{ delay: index * 0.1 }}
@@ -263,6 +323,7 @@ const addToCart = async (product: Product) => {
             setProducts={setProducts}
             orders={orders}
             setOrders={setOrders}
+            onReloadProducts={reloadProductsFromSupabase}
           />
         )}
 
@@ -278,6 +339,8 @@ const addToCart = async (product: Product) => {
             cart={cart}
             onClose={() => setShowCheckout(false)}
             onConfirm={handleCheckout}
+            updateQuantity={updateCartQuantity}
+            removeFromCart={removeFromCart}
           />
         )}
       </div>

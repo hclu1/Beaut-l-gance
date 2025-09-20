@@ -1,6 +1,4 @@
-// components/ProductCard.tsx
-import React, { useState } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
+import React from 'react';
 import { Product } from '../types';
 
 interface ProductCardProps {
@@ -9,94 +7,128 @@ interface ProductCardProps {
 }
 
 const ProductCard: React.FC<ProductCardProps> = ({ product, onAddToCart }) => {
-  const prixFinal = product.prix_reference * (1 - product.reduction / 100);
-  const [isHovered, setIsHovered] = useState(false);
-  const [isAdding, setIsAdding] = useState(false);
-  
-  const handleClick = async () => {
-    if (product.quantite_reelle <= 0) {
-      alert('Produit en rupture de stock');
-      return;
+  // Calculer le prix réel
+  const calculateRealPrice = () => {
+    if (product.quantite_reference && product.quantite_reference > 0) {
+      return (product.prix_reference / product.quantite_reference) * (product.quantite_reelle || product.quantite_reference);
     }
-    
-    setIsAdding(true);
-    onAddToCart(product);
-    
-    setTimeout(() => setIsAdding(false), 600);
+    return product.prix_reference;
   };
 
+  const realPrice = calculateRealPrice();
+  const finalPrice = realPrice * (1 - (product.reduction || 0) / 100);
+  const stockQuantity = product.stock_unite || product.quantite_reelle || 0;
+
   return (
-    <motion.div 
-      className="rounded-2xl shadow-xl p-4 bg-gradient-to-br from-pink-50 via-white to-purple-100 border border-pink-200 mb-4 flex flex-col overflow-hidden relative cursor-pointer"
-      whileHover={{ scale: 1.02, y: -5 }}
-      onHoverStart={() => setIsHovered(true)}
-      onHoverEnd={() => setIsHovered(false)}
-      onClick={handleClick}
-      transition={{ type: "spring", stiffness: 300 }}
-      animate={isAdding ? { scale: 1.05 } : { scale: 1 }}
-    >
-      {product.reduction > 0 && (
-        <div className="absolute top-2 right-2 bg-gradient-to-r from-pink-500 to-rose-500 text-white text-xs font-bold px-2 py-1 rounded-full z-10">
-          -{product.reduction}%
-        </div>
-      )}
-      
-      <div className="relative overflow-hidden rounded-xl mb-3">
-        <motion.img
-          src={product.image}
-          alt={product.nom}
-          className="w-full h-40 object-cover"
-          animate={{ scale: isHovered ? 1.1 : 1 }}
-          transition={{ duration: 0.3 }}
-        />
-        <div className="absolute inset-0 bg-gradient-to-t from-black/20 to-transparent opacity-0 hover:opacity-100 transition-opacity duration-300" />
-        
-        <AnimatePresence>
-          {isAdding && (
-            <motion.div
-              className="absolute inset-0 bg-green-500/80 flex items-center justify-center rounded-xl"
-              initial={{ opacity: 0, scale: 0.8 }}
-              animate={{ opacity: 1, scale: 1 }}
-              exit={{ opacity: 0, scale: 0.8 }}
-            >
-              <div className="text-white text-2xl">✓</div>
-            </motion.div>
-          )}
-        </AnimatePresence>
-      </div>
-      
-      <div className="flex-1">
-        <h3 className="font-bold text-lg text-gray-800 mb-1 leading-tight">{product.nom}</h3>
-        <p className="text-sm text-purple-600 font-medium mb-2">{product.marque}</p>
-        <p className="text-xs text-gray-600 mb-3 line-clamp-2">{product.description}</p>
-        
-        <div className="flex items-center justify-between mb-2">
-          <div className="flex items-center gap-2">
-            <span className="font-bold text-xl text-purple-700">{prixFinal.toFixed(2)} €</span>
-            {product.reduction > 0 && (
-              <span className="line-through text-gray-400 text-sm">{product.prix_reference} €</span>
-            )}
-          </div>
-        </div>
-        
-        <div className="flex items-center justify-between text-xs text-gray-500 mb-3">
-          <span>Stock: {product.quantite_reelle}</span>
-          <span className="bg-purple-100 text-purple-700 px-2 py-1 rounded-full">{product.categorie}</span>
-        </div>
-      </div>
-      
-      <div className="text-center py-2">
-        {product.quantite_reelle > 0 ? (
-          <div className="text-purple-600 font-medium text-sm flex items-center justify-center gap-2">
-            🛒 Cliquez pour ajouter au panier
-          </div>
+    <div className="bg-white rounded-xl shadow-md overflow-hidden hover:shadow-lg transition-shadow duration-300">
+      {/* Image du produit */}
+      <div className="relative h-48 bg-gray-100">
+        {product.image_url ? (
+          <img
+            src={product.image_url}
+            alt={product.nom}
+            className="w-full h-full object-cover"
+            crossOrigin="anonymous"
+            onError={(e) => {
+              console.log('❌ Erreur chargement image:', product.image_url);
+              const target = e.currentTarget as HTMLImageElement;
+              // Utiliser une image de fallback qui fonctionne
+              target.src = 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNDAwIiBoZWlnaHQ9IjMwMCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KICA8cmVjdCB3aWR0aD0iMTAwJSIgaGVpZ2h0PSIxMDAlIiBmaWxsPSIjZjNmNGY2Ii8+CiAgPHRleHQgeD0iNTAlIiB5PSI1MCUiIGZvbnQtZmFtaWx5PSJBcmlhbCwgc2Fucy1zZXJpZiIgZm9udC1zaXplPSIxOCIgZmlsbD0iIzljYTNhZiIgdGV4dC1hbmNob3I9Im1pZGRsZSIgZHk9Ii4zZW0iPkltYWdlIG5vbiBkaXNwb25pYmxlPC90ZXh0Pgo8L3N2Zz4K';
+            }}
+            onLoad={() => {
+              console.log('✅ Image chargée avec succès:', product.image_url);
+            }}
+          />
         ) : (
-          <div className="text-red-500 font-medium text-sm">
-            ❌ Rupture de stock
+          <div className="w-full h-full flex items-center justify-center text-gray-400">
+            <div className="text-center">
+              <div className="text-4xl mb-2">📷</div>
+              <div className="text-sm">Pas d'image</div>
+            </div>
+          </div>
+        )}
+        
+        {/* Badge réduction */}
+        {product.reduction > 0 && (
+          <div className="absolute top-2 left-2 bg-red-500 text-white px-2 py-1 rounded-md text-sm font-bold">
+            -{product.reduction}%
           </div>
         )}
       </div>
-    </motion.div>
+
+      {/* Contenu de la carte */}
+      <div className="p-4">
+        {/* En-tête */}
+        <div className="mb-2">
+          <h3 className="font-semibold text-lg text-gray-800 line-clamp-2">
+            {product.nom}
+          </h3>
+          <p className="text-sm text-gray-600">{product.marque}</p>
+        </div>
+
+        {/* Informations quantité */}
+        {product.quantite_reelle && product.quantite_reference && (
+          <div className="mb-3 text-xs text-gray-500">
+            <div>
+              {product.quantite_reelle}ml/gr 
+              {product.quantite_reelle !== product.quantite_reference && (
+                <span> (réf: {product.quantite_reference}ml/gr)</span>
+              )}
+            </div>
+          </div>
+        )}
+
+        {/* Prix */}
+        <div className="mb-3">
+          <div className="flex items-center space-x-2">
+            <span className="text-xl font-bold text-purple-600">
+              {finalPrice.toFixed(2)}€
+            </span>
+            {product.reduction > 0 && (
+              <span className="text-sm text-gray-500 line-through">
+                {realPrice.toFixed(2)}€
+              </span>
+            )}
+          </div>
+          {realPrice !== product.prix_reference && (
+            <div className="text-xs text-gray-500">
+              Prix internet: {product.prix_reference.toFixed(2)}€
+            </div>
+          )}
+        </div>
+
+        {/* Stock et emplacement */}
+        <div className="mb-3 text-sm text-gray-600">
+          <div>Stock: {stockQuantity} unités</div>
+          {product.emplacement_stock && (
+            <div className="text-xs text-blue-600">📍 {product.emplacement_stock}</div>
+          )}
+        </div>
+
+        {/* Description */}
+        {product.description && (
+          <p className="text-sm text-gray-600 mb-3 line-clamp-2">
+            {product.description}
+          </p>
+        )}
+
+        {/* Bouton d'ajout */}
+        <button
+          onClick={() => onAddToCart(product)}
+          disabled={stockQuantity <= 0}
+          className={`w-full py-2 px-4 rounded-lg font-medium transition-colors duration-300 ${
+            stockQuantity <= 0
+              ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
+              : 'bg-purple-600 text-white hover:bg-purple-700'
+          }`}
+        >
+          {stockQuantity <= 0 
+            ? 'Rupture de stock' 
+            : 'Ajouter au panier'
+          }
+        </button>
+      </div>
+    </div>
   );
 };
 

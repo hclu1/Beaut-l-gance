@@ -1,54 +1,47 @@
-// types.ts
 export interface Product {
-  id: string;
-  image: string;
-  marque: string;
+  id: number;
   nom: string;
-  categorie: string;
-  emplacement: string;
-  prix_reference: number;
-  quantite_web: number;
-  quantite_reelle: number;
+  marque: string;
+  prix_reference: number; // Prix trouvé sur internet
   reduction: number;
-  description: string;
-  quantite_produit: number;
+  image_url: string;
+  categorie: string;
+  
+  // NOUVEAUX CHAMPS pour la gestion stock/prix
+  quantite_reference: number; // Quantité qui correspond au prix_reference (ml/gr)
+  quantite_reelle: number; // Quantité réelle que vous avez (ml/gr)
+  stock_unite: number; // Nombre d'unités en stock
+  emplacement_stock: string; // N° d'emplacement dans le stock
+  
+  // Prix calculé automatiquement basé sur quantité_reelle
+  prix_reel?: number; // Prix calculé : (prix_reference / quantite_reference) * quantite_reelle
+  
+  description?: string;
 }
 
 export interface CartItem extends Product {
   quantite_achat: number;
 }
 
+export interface OrderItem extends Product {
+  quantite_achat: number;
+  prepared?: boolean; // Nouvel état : produit préparé ou non
+}
+
 export interface Order {
   id: string;
   date: string;
-  items: CartItem[];
+  items: OrderItem[];
   total: number;
-  status: 'pending' | 'preparing' | 'ready' | 'delivered';
+  status: 'pending' | 'preparation' | 'completed' | 'deleted'; // Statuts étendus avec supprimé
   paymentMode: string;
-  customerInfo?: {
-    nom?: string;
-    prenom?: string;
-    email?: string;
-    phone?: string;
-    address?: string;
-  };
-  preparedItems?: { [key: string]: boolean };
+  customerInfo: any;
+  preparedItems: { [productId: string]: boolean }; // État de préparation par produit
 }
 
 export interface SyncData {
   products: Product[];
   orders: Order[];
   timestamp: number;
-  version: string;
-  deviceId: string;
-  lastModified: {
-    products: number;
-    orders: number;
-  };
-}
-
-export interface ShopConfig {
-  name: string;
-  subtitle: string;
-  adminCode: string;
+  deviceId?: string;
 }
