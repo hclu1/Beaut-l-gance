@@ -1,4 +1,23 @@
-
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+/* Mode plein écran mobile */
+html, body {
+  height: 100vh;
+  overflow-x: hidden;
+}
+
+@supports (-webkit-touch-callout: none) {
+  html, body {
+    height: -webkit-fill-available;
+  }
+}
+
+/* Cache la barre d'adresse sur iOS */
+@media screen and (max-width: 768px) {
+  body {
+    padding-top: env(safe-area-inset-top);
+    padding-bottom: env(safe-area-inset-bottom);
+  }
+}
