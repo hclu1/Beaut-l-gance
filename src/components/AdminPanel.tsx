@@ -1,4 +1,4 @@
-https://beaut-l-gance-jnc17e6tu-herves-projects-1e3c484d.vercel.app/import React, { useState } from 'react';
+import React, { useState } from 'react';
 import { Product, Order } from '../types';
 import { ProductService } from '../services/productService';
 
@@ -20,6 +20,9 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
   const [editingProduct, setEditingProduct] = useState<Product | null>(null);
   const [uploadingImage, setUploadingImage] = useState(false);
   const [activeTab, setActiveTab] = useState<'products' | 'orders'>('products');
+  const [showQR, setShowQR] = useState(false);
+  
+  // CORRIGÉ : Valeurs par défaut à 0 au lieu de 100
   const [newProduct, setNewProduct] = useState({
     nom: '',
     marque: '',
@@ -27,12 +30,18 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
     reduction: 0,
     image_url: '',
     categorie: 'makeup',
-    quantite_reference: 100, // ml ou gr de référence
-    quantite_reelle: 100,    // ml ou gr réellement
-    stock_unite: 0,          // nombre d'unités en stock
-    emplacement_stock: '',   // emplacement dans le stock
+    quantite_reference: 0, // CORRIGÉ: était 100
+    quantite_reelle: 0,    // CORRIGÉ: était 100
+    stock_unite: 0,
+    emplacement_stock: '',
     description: ''
   });
+
+  // Fonction QR Code pour partage boutique
+  const generateQRCode = () => {
+    const boutqueUrl = window.location.origin;
+    return `https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(boutqueUrl)}`;
+  };
 
   // Fonction pour calculer le prix réel
   const calculateRealPrice = (product: any) => {
@@ -46,13 +55,11 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
   const handleImageUpload = async (file: File, isEditing = false) => {
     if (!file) return;
 
-    // Vérifier le type de fichier
     if (!file.type.startsWith('image/')) {
       alert('Veuillez sélectionner un fichier image');
       return;
     }
 
-    // Vérifier la taille (max 5MB)
     if (file.size > 5 * 1024 * 1024) {
       alert('L\'image doit faire moins de 5MB');
       return;
@@ -90,10 +97,9 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
       console.log('Ajout produit dans Supabase...');
       const addedProduct = await ProductService.addProduct(newProduct);
       
-      // Mettre à jour l'état local
       setProducts([...products, addedProduct]);
       
-      // Réinitialiser le formulaire
+      // CORRIGÉ : Réinitialiser avec des 0 au lieu de 100
       setNewProduct({
         nom: '',
         marque: '',
@@ -101,8 +107,8 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
         reduction: 0,
         image_url: '',
         categorie: 'makeup',
-        quantite_reference: 100,
-        quantite_reelle: 100,
+        quantite_reference: 0,
+        quantite_reelle: 0,
         stock_unite: 0,
         emplacement_stock: '',
         description: ''
@@ -123,7 +129,6 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
       console.log('Modification produit dans Supabase...');
       await ProductService.updateProduct(editingProduct.id, editingProduct);
       
-      // Mettre à jour l'état local
       setProducts(products.map(p => 
         p.id === editingProduct.id ? editingProduct : p
       ));
@@ -146,7 +151,6 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
       console.log('Suppression produit de Supabase...');
       await ProductService.deleteProduct(productId);
       
-      // Mettre à jour l'état local
       setProducts(products.filter(p => p.id !== productId));
       
       alert('Produit supprimé avec succès de Supabase !');
@@ -166,7 +170,6 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
             : item
         );
         
-        // Vérifier si tous les items sont préparés pour changer le statut
         const allPrepared = updatedItems.every(item => item.prepared);
         const newStatus = allPrepared ? 'completed' : 
                          updatedItems.some(item => item.prepared) ? 'preparation' : 'pending';
@@ -179,25 +182,21 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
     setOrders(updatedOrders);
   };
 
-  // Changer le statut d'une commande avec sauvegarde Supabase - CORRIGÉ
+  // Changer le statut d'une commande avec sauvegarde Supabase
   const changeOrderStatus = async (orderId: string, newStatus: 'pending' | 'preparation' | 'completed' | 'deleted') => {
     console.log('Début changeOrderStatus:', orderId, 'vers', newStatus);
     
     try {
-      // Mettre à jour dans Supabase d'abord
       console.log('Appel ProductService.updateOrderStatus...');
       await ProductService.updateOrderStatus(orderId, newStatus);
       console.log('Supabase mis à jour avec succès');
       
-      // Puis mettre à jour l'état local
       const updatedOrders = orders.map(order => {
         if (order.id === orderId) {
-          // Si on passe en completed, marquer tous les items comme préparés
           if (newStatus === 'completed') {
             const updatedItems = order.items.map(item => ({ ...item, prepared: true }));
             return { ...order, status: newStatus, items: updatedItems };
           }
-          // Si on passe en pending, marquer tous les items comme non préparés
           if (newStatus === 'pending') {
             const updatedItems = order.items.map(item => ({ ...item, prepared: false }));
             return { ...order, status: newStatus, items: updatedItems };
@@ -216,7 +215,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
     }
   };
 
-  // Supprimer définitivement une commande avec Supabase - CORRIGÉ
+  // Supprimer définitivement une commande avec Supabase
   const deleteOrder = async (orderId: string) => {
     if (!confirm('Êtes-vous sûr de vouloir supprimer définitivement cette commande ?')) {
       return;
@@ -224,10 +223,8 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
 
     try {
       console.log('Suppression commande:', orderId);
-      // Supprimer de Supabase d'abord
       await ProductService.deleteOrder(orderId);
       
-      // Puis mettre à jour l'état local
       setOrders(orders.filter(order => order.id !== orderId));
       alert('Commande supprimée définitivement');
     } catch (error) {
@@ -250,16 +247,23 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
   };
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-      <div className="bg-white rounded-lg p-6 max-w-6xl max-h-[90vh] overflow-y-auto w-full">
-        <div className="flex justify-between items-center mb-6">
-          <h2 className="text-2xl font-bold">Panel Administrateur</h2>
-          <div className="flex gap-2">
+    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-2 md:p-4">
+      <div className="bg-white rounded-lg p-4 md:p-6 max-w-6xl max-h-[95vh] overflow-y-auto w-full">
+        <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 gap-4">
+          <h2 className="text-xl md:text-2xl font-bold">Panel Administrateur</h2>
+          <div className="flex gap-2 self-end md:self-auto">
+            {/* NOUVEAU : Bouton QR Code */}
+            <button
+              onClick={() => setShowQR(!showQR)}
+              className="px-3 py-2 md:px-4 md:py-2 bg-purple-500 text-white rounded hover:bg-purple-600 text-sm md:text-base"
+            >
+              📱 QR Code
+            </button>
             <button
               onClick={handleReloadProducts}
-              className="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600"
+              className="px-3 py-2 md:px-4 md:py-2 bg-blue-500 text-white rounded hover:bg-blue-600 text-sm md:text-base"
             >
-              Recharger Supabase
+              Recharger
             </button>
             <button
               onClick={() => {
@@ -267,18 +271,41 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
                 if (onReloadProducts) onReloadProducts();
                 window.dispatchEvent(new CustomEvent('closeAdmin'));
               }}
-              className="px-4 py-2 bg-red-500 text-white rounded hover:bg-red-600"
+              className="px-3 py-2 md:px-4 md:py-2 bg-red-500 text-white rounded hover:bg-red-600 text-sm md:text-base"
             >
               Fermer
             </button>
           </div>
         </div>
 
+        {/* NOUVEAU : Modal QR Code */}
+        {showQR && (
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+            <div className="bg-white rounded-lg p-6 text-center max-w-sm w-full">
+              <h3 className="text-lg font-bold mb-4">QR Code - Partager la boutique</h3>
+              <img 
+                src={generateQRCode()}
+                alt="QR Code Boutique"
+                className="mx-auto mb-4 border rounded"
+              />
+              <p className="text-sm text-gray-600 mb-4">
+                Scannez ce code pour accéder à votre boutique Beauté-légance
+              </p>
+              <button
+                onClick={() => setShowQR(false)}
+                className="px-4 py-2 bg-purple-600 text-white rounded hover:bg-purple-700"
+              >
+                Fermer
+              </button>
+            </div>
+          </div>
+        )}
+
         {/* Onglets */}
         <div className="flex space-x-1 mb-6">
           <button
             onClick={() => setActiveTab('products')}
-            className={`px-4 py-2 rounded-t-lg font-medium ${
+            className={`px-3 py-2 md:px-4 md:py-2 rounded-t-lg font-medium text-sm md:text-base ${
               activeTab === 'products'
                 ? 'bg-blue-500 text-white'
                 : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
@@ -288,7 +315,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
           </button>
           <button
             onClick={() => setActiveTab('orders')}
-            className={`px-4 py-2 rounded-t-lg font-medium ${
+            className={`px-3 py-2 md:px-4 md:py-2 rounded-t-lg font-medium text-sm md:text-base ${
               activeTab === 'orders'
                 ? 'bg-blue-500 text-white'
                 : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
@@ -301,21 +328,21 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
         {/* Contenu selon l'onglet actif */}
         {activeTab === 'products' ? (
           <>
-            {/* Statistiques Produits - EN LIGNE pour gagner de la place */}
-            <div className="grid grid-cols-3 gap-3 mb-6">
+            {/* CORRIGÉ : Statistiques côte à côte et responsive */}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-3 mb-6">
               <div className="bg-blue-100 p-3 rounded text-center">
                 <h3 className="font-semibold text-sm">Produits</h3>
-                <p className="text-xl font-bold">{products.length}</p>
+                <p className="text-xl md:text-2xl font-bold">{products.length}</p>
               </div>
               <div className="bg-purple-100 p-3 rounded text-center">
                 <h3 className="font-semibold text-sm">Stock Total</h3>
-                <p className="text-xl font-bold">
+                <p className="text-xl md:text-2xl font-bold">
                   {products.reduce((sum, p) => sum + (p.stock_unite || 0), 0)}
                 </p>
               </div>
               <div className="bg-orange-100 p-3 rounded text-center">
                 <h3 className="font-semibold text-sm">Valeur Stock</h3>
-                <p className="text-xl font-bold">
+                <p className="text-xl md:text-2xl font-bold">
                   {products.reduce((sum, p) => sum + (calculateRealPrice(p) * (p.stock_unite || 0)), 0).toFixed(0)}€
                 </p>
               </div>
@@ -336,13 +363,12 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
 
                   return (
                     <div className="space-y-4">
-                      {/* Section image EN PREMIER */}
+                      {/* Section image */}
                       <div>
                         <label className="block text-sm font-medium text-gray-700 mb-2">
                           Image du produit
                         </label>
                         
-                        {/* Zone d'upload */}
                         <div className="border-2 border-dashed border-gray-300 rounded-lg p-4 text-center">
                           {currentProduct.image_url ? (
                             <div className="space-y-2">
@@ -387,21 +413,22 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
                         </div>
                       </div>
 
-                      {/* Champs du produit avec labels clairs */}
+                      {/* CORRIGÉ : Champs avec placeholders et couleurs grises */}
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <input
                           type="text"
                           placeholder="Nom du produit (ex: Rouge à lèvres mat)"
                           value={currentProduct.nom}
                           onChange={(e) => setCurrentProduct({nom: e.target.value})}
-                          className="p-2 border rounded"
+                          className="p-2 border rounded text-sm"
                         />
                         <input
                           type="text"
-                          placeholder="Marque (ex: Beauté-légance)"
+                          placeholder="Marque"
                           value={currentProduct.marque}
                           onChange={(e) => setCurrentProduct({marque: e.target.value})}
-                          className="p-2 border rounded"
+                          className="p-2 border rounded text-sm"
+                          style={{ color: '#9ca3af' }}
                         />
                         <input
                           type="number"
@@ -409,47 +436,49 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
                           placeholder="Prix internet en € (ex: 15.99)"
                           value={currentProduct.prix_reference || ''}
                           onChange={(e) => setCurrentProduct({prix_reference: parseFloat(e.target.value) || 0})}
-                          className="p-2 border rounded"
+                          className="p-2 border rounded text-sm"
                         />
                         <input
                           type="number"
-                          placeholder="Quantité référence ml/gr (ex: 15)"
+                          placeholder="Quantité référence ml/gr"
                           value={currentProduct.quantite_reference || ''}
-                          onChange={(e) => setCurrentProduct({quantite_reference: parseInt(e.target.value) || 100})}
-                          className="p-2 border rounded"
+                          onChange={(e) => setCurrentProduct({quantite_reference: parseInt(e.target.value) || 0})}
+                          className="p-2 border rounded text-sm"
+                          style={{ color: '#9ca3af' }}
                         />
                         <input
                           type="number"
-                          placeholder="Quantité réelle ml/gr (ex: 12)"
+                          placeholder="Quantité réelle ml/gr"
                           value={currentProduct.quantite_reelle || ''}
-                          onChange={(e) => setCurrentProduct({quantite_reelle: parseInt(e.target.value) || 100})}
-                          className="p-2 border rounded"
+                          onChange={(e) => setCurrentProduct({quantite_reelle: parseInt(e.target.value) || 0})}
+                          className="p-2 border rounded text-sm"
+                          style={{ color: '#9ca3af' }}
                         />
                         <input
                           type="number"
                           placeholder="Réduction en % (ex: 10)"
                           value={currentProduct.reduction || ''}
                           onChange={(e) => setCurrentProduct({reduction: parseInt(e.target.value) || 0})}
-                          className="p-2 border rounded"
+                          className="p-2 border rounded text-sm"
                         />
                         <input
                           type="number"
                           placeholder="Stock (nb unités) (ex: 25)"
                           value={currentProduct.stock_unite || ''}
                           onChange={(e) => setCurrentProduct({stock_unite: parseInt(e.target.value) || 0})}
-                          className="p-2 border rounded"
+                          className="p-2 border rounded text-sm"
                         />
                         <input
                           type="text"
                           placeholder="Emplacement (ex: A1-R2)"
                           value={currentProduct.emplacement_stock || ''}
                           onChange={(e) => setCurrentProduct({emplacement_stock: e.target.value})}
-                          className="p-2 border rounded"
+                          className="p-2 border rounded text-sm"
                         />
                         <select
                           value={currentProduct.categorie}
                           onChange={(e) => setCurrentProduct({categorie: e.target.value})}
-                          className="p-2 border rounded"
+                          className="p-2 border rounded text-sm"
                         >
                           <option value="makeup">Maquillage</option>
                           <option value="skincare">Soins Visage</option>
@@ -459,7 +488,6 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
                           <option value="accessories">Accessoires</option>
                         </select>
                         
-                        {/* Affichage du prix réel calculé */}
                         <div className="p-2 border rounded bg-gray-100">
                           <span className="text-sm text-gray-600">Prix réel calculé:</span>
                           <div className="font-bold text-green-600">
@@ -472,7 +500,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
                         placeholder="Description du produit"
                         value={currentProduct.description || ''}
                         onChange={(e) => setCurrentProduct({description: e.target.value})}
-                        className="w-full p-2 border rounded"
+                        className="w-full p-2 border rounded text-sm"
                         rows={2}
                       />
                     </div>
@@ -484,13 +512,13 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
                     <>
                       <button
                         onClick={handleUpdateProduct}
-                        className="px-6 py-2 bg-orange-500 text-white rounded hover:bg-orange-600"
+                        className="px-4 py-2 md:px-6 md:py-2 bg-orange-500 text-white rounded hover:bg-orange-600 text-sm md:text-base"
                       >
-                        Modifier dans Supabase
+                        Modifier
                       </button>
                       <button
                         onClick={() => setEditingProduct(null)}
-                        className="px-6 py-2 bg-gray-500 text-white rounded hover:bg-gray-600"
+                        className="px-4 py-2 md:px-6 md:py-2 bg-gray-500 text-white rounded hover:bg-gray-600 text-sm md:text-base"
                       >
                         Annuler
                       </button>
@@ -498,9 +526,9 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
                   ) : (
                     <button
                       onClick={handleAddProduct}
-                      className="px-6 py-2 bg-green-500 text-white rounded hover:bg-green-600"
+                      className="px-4 py-2 md:px-6 md:py-2 bg-green-500 text-white rounded hover:bg-green-600 text-sm md:text-base"
                     >
-                      Ajouter dans Supabase
+                      Ajouter
                     </button>
                   )}
                 </div>
@@ -512,13 +540,12 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
                 <div className="max-h-96 overflow-y-auto bg-white border rounded">
                   {products.length === 0 ? (
                     <div className="p-4 text-center text-gray-500">
-                      Aucun produit. Cliquez sur "Recharger Supabase" ou ajoutez-en un.
+                      Aucun produit. Cliquez sur "Recharger" ou ajoutez-en un.
                     </div>
                   ) : (
                     products.map(product => (
-                      <div key={product.id} className="flex items-center justify-between p-3 border-b hover:bg-gray-50">
+                      <div key={product.id} className="flex flex-col md:flex-row items-start md:items-center justify-between p-3 border-b hover:bg-gray-50 gap-2">
                         <div className="flex items-center space-x-3 flex-1">
-                          {/* Miniature du produit */}
                           <div className="w-12 h-12 bg-gray-100 rounded overflow-hidden flex-shrink-0">
                             {product.image_url ? (
                               <img 
@@ -538,26 +565,26 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
                           </div>
                           
                           <div className="flex-1">
-                            <div className="font-medium">{product.nom}</div>
-                            <div className="text-sm text-gray-600">
-                              {product.marque} • {calculateRealPrice(product).toFixed(2)}€ (réel) • Stock: {product.stock_unite} • {product.emplacement_stock}
+                            <div className="font-medium text-sm md:text-base">{product.nom}</div>
+                            <div className="text-xs md:text-sm text-gray-600">
+                              {product.marque} • {calculateRealPrice(product).toFixed(2)}€ • Stock: {product.stock_unite} • {product.emplacement_stock}
                             </div>
                             <div className="text-xs text-gray-500">
                               {product.quantite_reelle}ml/gr réel ({product.quantite_reference}ml/gr ref. = {product.prix_reference}€)
                             </div>
                           </div>
                         </div>
-                        <div className="flex gap-2">
+                        <div className="flex gap-2 self-end md:self-auto">
                           <button
                             onClick={() => setEditingProduct(product)}
-                            className="px-3 py-1 bg-orange-500 text-white rounded text-sm hover:bg-orange-600"
+                            className="px-2 py-1 md:px-3 md:py-1 bg-orange-500 text-white rounded text-sm hover:bg-orange-600"
                             title="Modifier ce produit"
                           >
                             ✏️
                           </button>
                           <button
                             onClick={() => handleDeleteProduct(product.id)}
-                            className="px-3 py-1 bg-red-500 text-white rounded text-sm hover:bg-red-600"
+                            className="px-2 py-1 md:px-3 md:py-1 bg-red-500 text-white rounded text-sm hover:bg-red-600"
                             title="Supprimer ce produit"
                           >
                             🗑️
@@ -598,7 +625,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
               </div>
             </div>
 
-            {/* Liste des commandes avec gestion préparation */}
+            {/* Liste des commandes */}
             <div className="bg-white border rounded-lg">
               <div className="p-4 border-b">
                 <h3 className="text-lg font-semibold">Gestion des commandes</h3>
@@ -615,7 +642,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
                       order.status === 'preparation' ? 'bg-orange-50' : 
                       order.status === 'completed' ? 'bg-green-50' : 'bg-red-50'
                     }`}>
-                      <div className="flex justify-between items-start mb-3">
+                      <div className="flex flex-col md:flex-row justify-between items-start mb-3 gap-2">
                         <div>
                           <div className="font-semibold">Commande #{order.id}</div>
                           <div className="text-sm text-gray-600">{order.date}</div>
@@ -630,7 +657,6 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
                           <div className="font-semibold text-green-600 mb-2">{order.total.toFixed(2)}€</div>
                           
                           <div className="flex items-center space-x-2">
-                            {/* Sélecteur de statut */}
                             <select
                               value={order.status}
                               onChange={(e) => changeOrderStatus(order.id, e.target.value as any)}
@@ -650,7 +676,6 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
                               <option value="deleted">❌ Supprimée</option>
                             </select>
                             
-                            {/* Petite icône suppression */}
                             <button
                               onClick={() => deleteOrder(order.id)}
                               className="w-6 h-6 bg-red-500 text-white rounded hover:bg-red-600 flex items-center justify-center text-xs"
@@ -677,7 +702,6 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
                                 className="w-4 h-4 text-green-600"
                               />
                               
-                              {/* Miniature du produit */}
                               <div className="w-10 h-10 bg-gray-100 rounded overflow-hidden flex-shrink-0">
                                 {item.image_url ? (
                                   <img 
@@ -701,7 +725,6 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
                                 <div className="text-xs text-gray-600">
                                   {item.marque} • Quantité: {item.quantite_achat} • {calculateRealPrice(item).toFixed(2)}€/unité
                                 </div>
-                                {/* Afficher l'emplacement du produit - TOUJOURS affiché */}
                                 {(() => {
                                   const product = products.find(p => p.id === item.id);
                                   return (
@@ -722,7 +745,6 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
                           </div>
                         ))}
                         
-                        {/* Indicateur de progression */}
                         <div className="mt-3 pt-2 border-t">
                           <div className="flex justify-between text-sm">
                             <span>Progression:</span>

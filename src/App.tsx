@@ -23,16 +23,25 @@ const App: React.FC = () => {
   const [admin, setAdmin] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
   const [showCheckout, setShowCheckout] = useState(false);
+  
+  // NOUVEAU : État pour QR Code
+  const [showQR, setShowQR] = useState(false);
 
-  // ✅ Produits chargés depuis Supabase uniquement
+  // Produits chargés depuis Supabase uniquement
   const [products, setProducts] = useState<Product[]>([]);
   
-  // ✅ Commandes chargées depuis localStorage pour le moment
+  // Commandes chargées depuis localStorage pour le moment
   const [orders, setOrders] = useState<Order[]>(() =>
     loadFromStorage(STORAGE_KEYS.ORDERS, [])
   );
 
-  // ✅ Chargement initial des produits depuis Supabase
+  // NOUVEAU : Fonction pour générer QR Code
+  const generateQRCode = () => {
+    const boutqueUrl = window.location.origin;
+    return `https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(boutqueUrl)}`;
+  };
+
+  // Chargement initial des produits depuis Supabase
   useEffect(() => {
     console.log('Chargement des produits depuis Supabase...');
     
@@ -48,7 +57,7 @@ const App: React.FC = () => {
         console.log('Fallback vers données initiales');
       });
 
-    // ✅ Écouter l'événement de fermeture admin
+    // Écouter l'événement de fermeture admin
     const handleCloseAdmin = () => setAdmin(false);
     window.addEventListener('closeAdmin', handleCloseAdmin);
     
@@ -77,9 +86,6 @@ const App: React.FC = () => {
     }
   }, []);
 
-  // ✅ SUPPRIMÉ : Plus de sauvegarde automatique des produits dans localStorage
-  // Les produits sont maintenant gérés uniquement dans Supabase
-
   // Sauvegarde automatique des commandes dans le localStorage
   useEffect(() => {
     saveToStorage(STORAGE_KEYS.ORDERS, orders);
@@ -105,7 +111,7 @@ const App: React.FC = () => {
     alert('Magasin réinitialisé avec les données d\'origine');
   };
 
-  // ✅ Fonction pour recharger les produits depuis Supabase
+  // Fonction pour recharger les produits depuis Supabase
   const reloadProductsFromSupabase = async () => {
     try {
       console.log('Rechargement des produits depuis Supabase...');
@@ -117,7 +123,7 @@ const App: React.FC = () => {
     }
   };
 
-  // ✅ Gestion panier : ajout produit avec mise à jour Supabase
+  // Gestion panier : ajout produit avec mise à jour Supabase
   const addToCart = async (product: Product) => {
     if (product.quantite_reelle <= 0) {
       alert('Produit en rupture de stock');
@@ -133,7 +139,7 @@ const App: React.FC = () => {
       setCart([...cart, { ...product, quantite_achat: 1 }]);
     }
 
-    // ✅ Mettre à jour le stock dans Supabase ET l'état local
+    // Mettre à jour le stock dans Supabase ET l'état local
     try {
       const newStock = product.quantite_reelle - 1;
       await ProductService.updateStock(product.id, newStock);
@@ -148,7 +154,7 @@ const App: React.FC = () => {
     }
   };
 
-  // ✅ Supprimer un item du panier avec mise à jour stock Supabase
+  // Supprimer un item du panier avec mise à jour stock Supabase
   const removeFromCart = async (index: number) => {
     const removedItem = cart[index];
     setCart(cart.filter((_, i) => i !== index));
@@ -169,7 +175,7 @@ const App: React.FC = () => {
     }
   };
 
-  // ✅ Modifier la quantité d'un item dans le panier avec Supabase
+  // Modifier la quantité d'un item dans le panier avec Supabase
   const updateCartQuantity = async (index: number, newQuantity: number) => {
     if (newQuantity <= 0) {
       removeFromCart(index);
@@ -204,7 +210,7 @@ const App: React.FC = () => {
     }
   };
 
-  // ✅ Finalisation commande avec sauvegarde Supabase
+  // Finalisation commande avec sauvegarde Supabase
   const handleCheckout = async (customerInfo: any) => {
     const total = cart.reduce((sum, item) =>
       sum + (item.prix_reference * (1 - item.reduction / 100) * item.quantite_achat), 0
@@ -225,7 +231,7 @@ const App: React.FC = () => {
     };
 
     try {
-      // ✅ Sauvegarder la commande dans Supabase
+      // Sauvegarder la commande dans Supabase
       await ProductService.saveOrder(newOrder);
       console.log('Commande sauvegardée dans Supabase');
       
@@ -267,27 +273,76 @@ const App: React.FC = () => {
         <div className="absolute -bottom-40 -left-40 w-80 h-80 bg-purple-200 rounded-full opacity-20 blur-3xl"></div>
       </div>
 
-      <div className="relative z-10 font-sans pt-8 pb-12 px-4 max-w-6xl mx-auto">
-        <Header
-          searchTerm={searchTerm}
-          setSearchTerm={setSearchTerm}
-          products={products}
-          orders={orders}
-          onDataSync={handleDataSync}
-          onForceSync={handleForceSync}
-        />
+      <div className="relative z-10 font-sans pt-4 md:pt-8 pb-12 px-2 md:px-4 max-w-6xl mx-auto">
+        {/* MODIFIÉ : Header avec QR Code intégré */}
+        <header className="mb-8">
+          <div className="text-center mb-6">
+            <h1 className="text-2xl md:text-4xl font-bold bg-gradient-to-r from-pink-600 to-purple-600 bg-clip-text text-transparent mb-2">
+              ✨ Beauté-légance ✨
+            </h1>
+            <p className="text-gray-600 text-sm md:text-base">Votre boutique de beauté exclusive</p>
+          </div>
+          
+          <div className="flex flex-col sm:flex-row gap-4 items-center justify-between">
+            <div className="flex-1 w-full sm:max-w-md">
+              <input
+                type="text"
+                placeholder="Rechercher un produit..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="w-full px-4 py-2 border border-gray-300 rounded-full focus:outline-none focus:ring-2 focus:ring-purple-500"
+              />
+            </div>
+            
+            <button
+              onClick={() => setShowQR(!showQR)}
+              className="px-4 py-2 bg-purple-600 text-white rounded-full hover:bg-purple-700 transition-colors text-sm md:text-base"
+            >
+              📱 Partager
+            </button>
+          </div>
+
+          {/* NOUVEAU : Modal QR Code */}
+          {showQR && (
+            <motion.div 
+              initial={{ opacity: 0, scale: 0.9 }}
+              animate={{ opacity: 1, scale: 1 }}
+              className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4"
+              onClick={() => setShowQR(false)}
+            >
+              <div className="bg-white rounded-lg p-6 text-center max-w-sm w-full" onClick={e => e.stopPropagation()}>
+                <h3 className="text-lg font-bold mb-4">Partager la boutique</h3>
+                <img 
+                  src={generateQRCode()}
+                  alt="QR Code"
+                  className="mx-auto mb-4 border rounded"
+                />
+                <p className="text-sm text-gray-600 mb-4">
+                  Scannez ce QR code pour accéder à la boutique
+                </p>
+                <button
+                  onClick={() => setShowQR(false)}
+                  className="px-4 py-2 bg-purple-600 text-white rounded hover:bg-purple-700"
+                >
+                  Fermer
+                </button>
+              </div>
+            </motion.div>
+          )}
+        </header>
 
         <CategoryFilter
           selectedCat={selectedCat}
           setSelectedCat={setSelectedCat}
         />
 
-        <motion.div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8" layout>
+        {/* MODIFIÉ : Grille responsive optimisée */}
+        <motion.div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6 mb-8" layout>
           <AnimatePresence>
             {filteredProducts.map((product, index) => (
               <motion.div
                 key={product.id}
-                initial={{ opacity: 0, y:20 }}
+                initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 exit={{ opacity: 0, y: -20 }}
                 transition={{ delay: index * 0.1 }}
@@ -304,8 +359,8 @@ const App: React.FC = () => {
 
         {filteredProducts.length === 0 && (
           <motion.div className="text-center py-12" initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
-            <div className="text-6xl mb-4">🔍</div>
-            <h3 className="text-xl font-semibold text-gray-600 mb-2">Aucun produit trouvé</h3>
+            <div className="text-4xl md:text-6xl mb-4">🔍</div>
+            <h3 className="text-lg md:text-xl font-semibold text-gray-600 mb-2">Aucun produit trouvé</h3>
             <p className="text-gray-500">Essayez de modifier vos critères de recherche</p>
           </motion.div>
         )}
@@ -316,7 +371,16 @@ const App: React.FC = () => {
           updateQuantity={updateCartQuantity}
         />
 
-        {!admin && <DiscreteAdminButton setAdmin={setAdmin} />}
+        {/* MODIFIÉ : Bouton admin responsive */}
+        {!admin && (
+          <button
+            onClick={() => setAdmin(true)}
+            className="fixed top-4 left-4 w-8 h-8 md:w-10 md:h-10 bg-gray-200 hover:bg-gray-300 rounded-full opacity-30 hover:opacity-100 transition-opacity z-30 text-xs md:text-sm"
+          >
+            ⚙️
+          </button>
+        )}
+
         {admin && (
           <AdminPanel
             products={products}
