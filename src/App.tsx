@@ -13,7 +13,6 @@ import ProductCard from './components/ProductCard';
 import Cart from './components/Cart';
 import FloatingCartIcon from './components/FloatingCartIcon';
 import CheckoutModal from './components/CheckoutModal';
-import DiscreteAdminButton from './components/DiscreteAdminButton';
 import AdminPanel from './components/AdminPanel';
 import { ProductService } from './services/productService';
 
@@ -23,8 +22,6 @@ const App: React.FC = () => {
   const [admin, setAdmin] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
   const [showCheckout, setShowCheckout] = useState(false);
-  
-  // NOUVEAU : État pour QR Code
   const [showQR, setShowQR] = useState(false);
 
   // Produits chargés depuis Supabase uniquement
@@ -35,10 +32,10 @@ const App: React.FC = () => {
     loadFromStorage(STORAGE_KEYS.ORDERS, [])
   );
 
-  // NOUVEAU : Fonction pour générer QR Code
+  // Fonction pour générer QR Code
   const generateQRCode = () => {
-    const boutqueUrl = window.location.origin;
-    return `https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(boutqueUrl)}`;
+    const currentUrl = window.location.href.split('?')[0];
+    return `https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(currentUrl)}`;
   };
 
   // Chargement initial des produits depuis Supabase
@@ -52,12 +49,10 @@ const App: React.FC = () => {
       })
       .catch(err => {
         console.error('Erreur chargement produits:', err);
-        // Fallback vers données initiales en cas d'erreur
         setProducts(initialProducts);
         console.log('Fallback vers données initiales');
       });
 
-    // Écouter l'événement de fermeture admin
     const handleCloseAdmin = () => setAdmin(false);
     window.addEventListener('closeAdmin', handleCloseAdmin);
     
@@ -76,12 +71,12 @@ const App: React.FC = () => {
       window.history.replaceState({}, '', url.toString());
 
       setTimeout(() => {
-        alert(`✅ Synchronisation automatique réussie !\n\n` +
-          `📦 ${syncData.products.length} produits importés\n` +
-          `📋 ${syncData.orders.length} commandes importées\n` +
-          `🕒 ${new Date(syncData.timestamp).toLocaleString('fr-FR')}\n` +
-          `📱 Depuis: ${syncData.deviceId || 'Appareil inconnu'}\n\n` +
-          `🔄 Ce magasin est maintenant synchronisé !`);
+        alert(`Synchronisation automatique réussie !\n\n` +
+          `${syncData.products.length} produits importés\n` +
+          `${syncData.orders.length} commandes importées\n` +
+          `${new Date(syncData.timestamp).toLocaleString('fr-FR')}\n` +
+          `Depuis: ${syncData.deviceId || 'Appareil inconnu'}\n\n` +
+          `Ce magasin est maintenant synchronisé !`);
       }, 1000);
     }
   }, []);
@@ -139,12 +134,10 @@ const App: React.FC = () => {
       setCart([...cart, { ...product, quantite_achat: 1 }]);
     }
 
-    // Mettre à jour le stock dans Supabase ET l'état local
     try {
       const newStock = product.quantite_reelle - 1;
       await ProductService.updateStock(product.id, newStock);
       
-      // Mettre à jour l'état local seulement après succès Supabase
       setProducts(products.map(p =>
         p.id === product.id ? { ...p, quantite_reelle: newStock } : p
       ));
@@ -159,7 +152,6 @@ const App: React.FC = () => {
     const removedItem = cart[index];
     setCart(cart.filter((_, i) => i !== index));
 
-    // Remettre le stock dans Supabase
     try {
       const product = products.find(p => p.id === removedItem.id);
       if (product) {
@@ -195,7 +187,6 @@ const App: React.FC = () => {
     updatedCart[index].quantite_achat = newQuantity;
     setCart(updatedCart);
 
-    // Mettre à jour le stock dans Supabase
     try {
       if (product) {
         const newStock = product.quantite_reelle - diff;
@@ -231,11 +222,9 @@ const App: React.FC = () => {
     };
 
     try {
-      // Sauvegarder la commande dans Supabase
       await ProductService.saveOrder(newOrder);
       console.log('Commande sauvegardée dans Supabase');
       
-      // Puis mettre à jour l'état local
       setOrders([newOrder, ...orders]);
       setCart([]);
       setShowCheckout(false);
@@ -244,16 +233,15 @@ const App: React.FC = () => {
         ? `${customerInfo.prenom} ${customerInfo.nom}`
         : customerInfo.nom || customerInfo.prenom || 'Client';
 
-      alert(`✅ Commande validée pour ${customerName}!\nNuméro: #${newOrder.id}\nSauvegardée dans Supabase.`);
+      alert(`Commande validée pour ${customerName}!\nNuméro: #${newOrder.id}\nSauvegardée dans Supabase.`);
     } catch (error) {
       console.error('Erreur sauvegarde commande:', error);
       
-      // En cas d'erreur Supabase, sauvegarder quand même localement
       setOrders([newOrder, ...orders]);
       setCart([]);
       setShowCheckout(false);
       
-      alert(`⚠️ Commande validée mais erreur de sauvegarde Supabase.\nCommande sauvegardée localement.`);
+      alert(`Commande validée mais erreur de sauvegarde Supabase.\nCommande sauvegardée localement.`);
     }
   };
 
@@ -274,11 +262,11 @@ const App: React.FC = () => {
       </div>
 
       <div className="relative z-10 font-sans pt-4 md:pt-8 pb-12 px-2 md:px-4 max-w-6xl mx-auto">
-        {/* MODIFIÉ : Header avec QR Code intégré */}
+        {/* Header avec QR Code */}
         <header className="mb-8">
           <div className="text-center mb-6">
             <h1 className="text-2xl md:text-4xl font-bold bg-gradient-to-r from-pink-600 to-purple-600 bg-clip-text text-transparent mb-2">
-              ✨ Beauté-légance ✨
+              Beauté-légance
             </h1>
             <p className="text-gray-600 text-sm md:text-base">Votre boutique de beauté exclusive</p>
           </div>
@@ -298,11 +286,11 @@ const App: React.FC = () => {
               onClick={() => setShowQR(!showQR)}
               className="px-4 py-2 bg-purple-600 text-white rounded-full hover:bg-purple-700 transition-colors text-sm md:text-base"
             >
-              📱 Partager
+              Partager
             </button>
           </div>
 
-          {/* NOUVEAU : Modal QR Code */}
+          {/* Modal QR Code */}
           {showQR && (
             <motion.div 
               initial={{ opacity: 0, scale: 0.9 }}
@@ -331,12 +319,33 @@ const App: React.FC = () => {
           )}
         </header>
 
-        <CategoryFilter
-          selectedCat={selectedCat}
-          setSelectedCat={setSelectedCat}
-        />
+        {/* Filtre de catégories */}
+        <div className="flex flex-wrap justify-center gap-2 mb-8">
+          {[
+            { id: null, name: 'Tous', icon: '🛍️' },
+            { id: 'makeup', name: 'Maquillage', icon: '💄' },
+            { id: 'skincare', name: 'Soins Visage', icon: '🧴' },
+            { id: 'bodycare', name: 'Soins Corps', icon: '🧼' },
+            { id: 'haircare', name: 'Cheveux', icon: '💇‍♀️' },
+            { id: 'fragrance', name: 'Parfums', icon: '🌸' },
+            { id: 'accessories', name: 'Accessoires', icon: '✨' }
+          ].map(cat => (
+            <button
+              key={cat.id}
+              onClick={() => setSelectedCat(cat.id)}
+              className={`px-3 py-2 md:px-4 md:py-2 rounded-full text-sm md:text-base transition-all ${
+                selectedCat === cat.id
+                  ? 'bg-purple-600 text-white shadow-lg'
+                  : 'bg-white text-gray-700 hover:bg-purple-100'
+              }`}
+            >
+              <span className="mr-1">{cat.icon}</span>
+              {cat.name}
+            </button>
+          ))}
+        </div>
 
-        {/* MODIFIÉ : Grille responsive optimisée */}
+        {/* Grille des produits */}
         <motion.div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6 mb-8" layout>
           <AnimatePresence>
             {filteredProducts.map((product, index) => (
@@ -371,11 +380,18 @@ const App: React.FC = () => {
           updateQuantity={updateCartQuantity}
         />
 
-        {/* MODIFIÉ : Bouton admin responsive */}
+        {/* BOUTON ADMIN DISCRET AVEC CODE */}
         {!admin && (
           <button
-            onClick={() => setAdmin(true)}
-            className="fixed top-4 left-4 w-8 h-8 md:w-10 md:h-10 bg-gray-200 hover:bg-gray-300 rounded-full opacity-30 hover:opacity-100 transition-opacity z-30 text-xs md:text-sm"
+            onClick={() => {
+              const code = prompt("Code d'accès administrateur :");
+              if (code === "marina2025") {
+                setAdmin(true);
+              } else if (code !== null) {
+                alert("Code incorrect");
+              }
+            }}
+            className="fixed top-4 left-4 w-8 h-8 md:w-10 md:h-10 bg-gray-200 hover:bg-gray-300 rounded-full opacity-30 hover:opacity-100 transition-opacity z-30 text-xs md:text-sm flex items-center justify-center"
           >
             ⚙️
           </button>
