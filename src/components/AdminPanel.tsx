@@ -37,10 +37,11 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
     description: ''
   });
 
-  // Fonction QR Code pour partage boutique
+  // Fonction QR Code pour partage boutique - CORRIGÉ
   const generateQRCode = () => {
-    const boutqueUrl = window.location.origin;
-    return `https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(boutqueUrl)}`;
+    // Utiliser l'URL actuelle complète au lieu de window.location.origin
+    const currentUrl = window.location.href.split('?')[0]; // Enlever les paramètres
+    return `https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(currentUrl)}`;
   };
 
   // Fonction pour calculer le prix réel
@@ -363,7 +364,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
 
                   return (
                     <div className="space-y-4">
-                      {/* Section image */}
+                      {/* Section image EN PREMIER */}
                       <div>
                         <label className="block text-sm font-medium text-gray-700 mb-2">
                           Image du produit
@@ -413,22 +414,23 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
                         </div>
                       </div>
 
-                      {/* CORRIGÉ : Champs avec placeholders et couleurs grises */}
+                      {/* Nom du produit JUSTE APRÈS l'image */}
+                      <input
+                        type="text"
+                        placeholder="Nom du produit (ex: Rouge à lèvres mat)"
+                        value={currentProduct.nom}
+                        onChange={(e) => setCurrentProduct({nom: e.target.value})}
+                        className="w-full p-2 border rounded text-sm"
+                      />
+
+                      {/* CORRIGÉ : Autres champs avec 0 par défaut et couleurs grises */}
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        <input
-                          type="text"
-                          placeholder="Nom du produit (ex: Rouge à lèvres mat)"
-                          value={currentProduct.nom}
-                          onChange={(e) => setCurrentProduct({nom: e.target.value})}
-                          className="p-2 border rounded text-sm"
-                        />
                         <input
                           type="text"
                           placeholder="Marque"
                           value={currentProduct.marque}
                           onChange={(e) => setCurrentProduct({marque: e.target.value})}
-                          className="p-2 border rounded text-sm"
-                          style={{ color: '#9ca3af' }}
+                          className="p-2 border rounded text-sm text-gray-500"
                         />
                         <input
                           type="number"
@@ -438,22 +440,26 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
                           onChange={(e) => setCurrentProduct({prix_reference: parseFloat(e.target.value) || 0})}
                           className="p-2 border rounded text-sm"
                         />
-                        <input
-                          type="number"
-                          placeholder="Quantité référence ml/gr"
-                          value={currentProduct.quantite_reference || ''}
-                          onChange={(e) => setCurrentProduct({quantite_reference: parseInt(e.target.value) || 0})}
-                          className="p-2 border rounded text-sm"
-                          style={{ color: '#9ca3af' }}
-                        />
-                        <input
-                          type="number"
-                          placeholder="Quantité réelle ml/gr"
-                          value={currentProduct.quantite_reelle || ''}
-                          onChange={(e) => setCurrentProduct({quantite_reelle: parseInt(e.target.value) || 0})}
-                          className="p-2 border rounded text-sm"
-                          style={{ color: '#9ca3af' }}
-                        />
+                        <div>
+                          <label className="block text-xs text-gray-500 mb-1">Quantité référence (ml/gr)</label>
+                          <input
+                            type="number"
+                            placeholder="0"
+                            value={currentProduct.quantite_reference || ''}
+                            onChange={(e) => setCurrentProduct({quantite_reference: parseInt(e.target.value) || 0})}
+                            className="w-full p-2 border rounded text-sm text-gray-500"
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-xs text-gray-500 mb-1">Quantité réelle (ml/gr)</label>
+                          <input
+                            type="number"
+                            placeholder="0"
+                            value={currentProduct.quantite_reelle || ''}
+                            onChange={(e) => setCurrentProduct({quantite_reelle: parseInt(e.target.value) || 0})}
+                            className="w-full p-2 border rounded text-sm text-gray-500"
+                          />
+                        </div>
                         <input
                           type="number"
                           placeholder="Réduction en % (ex: 10)"
