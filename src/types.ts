@@ -11,7 +11,7 @@ export interface Product {
   quantite_reference: number; // Quantité qui correspond au prix_reference (ml/gr)
   quantite_reelle: number; // Quantité réelle que vous avez (ml/gr)
   stock_unite: number; // Nombre d'unités en stock
-  emplacement_stock: string[]; // MODIFIÉ: array au lieu de string
+  emplacement_stock: string | string[]; // Accepte string ET array
   
   // Prix calculé automatiquement basé sur quantité_reelle
   prix_reel?: number; // Prix calculé : (prix_reference / quantite_reference) * quantite_reelle
