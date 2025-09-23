@@ -32,7 +32,7 @@ const ProductCard: React.FC<ProductCardProps> = ({ product, onAddToCart }) => {
 
   return (
     <>
-      {/* CARTE PRODUIT - IMAGE CORRIGÉE */}
+      {/* CARTE PRODUIT - STOCK ET EMPLACEMENT SUPPRIMÉS */}
       <div className="bg-white rounded-xl shadow-md overflow-hidden hover:shadow-lg transition-shadow duration-300">
         <div className="relative h-48 bg-gray-100 cursor-pointer" onClick={() => setShowModal(true)}>
           {product.image_url ? (
@@ -65,12 +65,7 @@ const ProductCard: React.FC<ProductCardProps> = ({ product, onAddToCart }) => {
             )}
           </div>
 
-          <div className="mb-3 text-sm text-gray-600">
-            <div>Stock: {stockQuantity} unités</div>
-            {product.emplacement_stock && (
-              <div className="text-xs text-blue-600">📍 {product.emplacement_stock}</div>
-            )}
-          </div>
+          {/* SUPPRIMÉ : Stock et emplacement */}
 
           <button
             onClick={() => onAddToCart(product)}
@@ -84,7 +79,7 @@ const ProductCard: React.FC<ProductCardProps> = ({ product, onAddToCart }) => {
         </div>
       </div>
 
-      {/* MODAL - IMAGE ÉGALEMENT CORRIGÉE */}
+      {/* MODAL AVEC EMPLACEMENTS MULTIPLES */}
       <AnimatePresence>
         {showModal && (
           <motion.div
@@ -137,8 +132,24 @@ const ProductCard: React.FC<ProductCardProps> = ({ product, onAddToCart }) => {
                       <div className="bg-green-50 p-4 rounded-lg">
                         <h4 className="font-semibold text-green-800 mb-2">Disponibilité</h4>
                         <div className="text-sm">Stock: {stockQuantity} unités</div>
-                        {product.emplacement_stock && (
-                          <div className="text-sm">📍 {product.emplacement_stock}</div>
+                        
+                        {/* NOUVEAUTÉ : Emplacements multiples */}
+                        {product.emplacement_stock && Array.isArray(product.emplacement_stock) && product.emplacement_stock.length > 0 && (
+                          <div className="text-sm mt-2">
+                            <div className="font-medium text-green-700 mb-1">Emplacements:</div>
+                            <div className="flex flex-wrap gap-1">
+                              {product.emplacement_stock.map((emplacement, index) => (
+                                <span key={index} className="text-xs bg-green-100 px-2 py-1 rounded">
+                                  📍 {emplacement}
+                                </span>
+                              ))}
+                            </div>
+                          </div>
+                        )}
+                        
+                        {/* Fallback pour ancien format string */}
+                        {product.emplacement_stock && typeof product.emplacement_stock === 'string' && (
+                          <div className="text-sm mt-1">📍 {product.emplacement_stock}</div>
                         )}
                       </div>
                       
@@ -174,40 +185,4 @@ const ProductCard: React.FC<ProductCardProps> = ({ product, onAddToCart }) => {
                     </div>
 
                     {product.description && (
-                      <div className="bg-gray-50 p-4 rounded-lg">
-                        <h4 className="font-semibold text-gray-800 mb-2">Description</h4>
-                        <div className="text-xs md:text-sm text-gray-600 whitespace-pre-wrap leading-relaxed break-words">
-                          {product.description}
-                        </div>
-                      </div>
-                    )}
-                  </div>
-
-                  <div className="mt-auto grid grid-cols-1 md:grid-cols-2 gap-3">
-                    <button
-                      onClick={() => setShowModal(false)}
-                      className="py-2 px-4 rounded-lg border border-gray-300 text-gray-700 hover:bg-gray-50 transition-colors duration-300"
-                    >
-                      Continuer mes achats
-                    </button>
-                    <button
-                      onClick={handleAddToCart}
-                      disabled={stockQuantity <= 0}
-                      className={`py-2 px-4 rounded-lg font-semibold transition-colors duration-300 ${
-                        stockQuantity <= 0 ? 'bg-gray-300 text-gray-500' : 'bg-purple-600 text-white hover:bg-purple-700'
-                      }`}
-                    >
-                      {stockQuantity <= 0 ? 'Rupture de stock' : `Ajouter ${quantity} au panier`}
-                    </button>
-                  </div>
-                </div>
-              </div>
-            </motion.div>
-          </motion.div>
-        )}
-      </AnimatePresence>
-    </>
-  );
-};
-
-export default ProductCard;
+                      <div
