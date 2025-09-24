@@ -22,7 +22,6 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
   const [activeTab, setActiveTab] = useState<'products' | 'orders'>('products');
   const [showQR, setShowQR] = useState(false);
   
-  // CORRIGÉ : Valeurs par défaut à 0 au lieu de 100
   const [newProduct, setNewProduct] = useState({
     nom: '',
     marque: '',
@@ -30,17 +29,59 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
     reduction: 0,
     image_url: '',
     categorie: 'makeup',
-    quantite_reference: 0, // CORRIGÉ: était 100
-    quantite_reelle: 0,    // CORRIGÉ: était 100
+    quantite_reference: 0,
+    quantite_reelle: 0,
     stock_unite: 0,
     emplacement_stock: '',
     description: ''
   });
 
-  // Fonction QR Code pour partage boutique - CORRIGÉ
+  // NOUVELLE FONCTION : Compression d'images
+  const compressImage = (file: File, maxWidth: number = 800, quality: number = 0.8): Promise<File> => {
+    return new Promise((resolve) => {
+      const canvas = document.createElement('canvas');
+      const ctx = canvas.getContext('2d')!;
+      const img = new Image();
+      
+      img.onload = () => {
+        // Calculer la nouvelle taille en conservant le ratio
+        let { width, height } = img;
+        if (width > height) {
+          if (width > maxWidth) {
+            height = (height * maxWidth) / width;
+            width = maxWidth;
+          }
+        } else {
+          if (height > maxWidth) {
+            width = (width * maxWidth) / height;
+            height = maxWidth;
+          }
+        }
+        
+        canvas.width = width;
+        canvas.height = height;
+        
+        // Dessiner l'image redimensionnée
+        ctx.drawImage(img, 0, 0, width, height);
+        
+        // Convertir en WebP compressé
+        canvas.toBlob((blob) => {
+          const compressedFile = new File(
+            [blob!], 
+            file.name.replace(/\.(jpg|jpeg|png)$/i, '.webp'), 
+            { type: 'image/webp' }
+          );
+          resolve(compressedFile);
+        }, 'image/webp', quality);
+      };
+      
+      img.src = URL.createObjectURL(file);
+    });
+  };
+
+  // Fonction QR Code pour partage boutique
   const generateQRCode = () => {
-    // Utiliser l'URL actuelle complète au lieu de window.location.origin
-    const currentUrl = window.location.href.split('?')[0]; // Enlever les paramètres
+    const currentUrl = window.location.href.split('?')[0];
     return `https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(currentUrl)}`;
   };
 
@@ -52,7 +93,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
     return product.prix_reference;
   };
 
-  // Upload d'image vers Supabase Storage
+  // MODIFIÉE : Upload d'image avec compression
   const handleImageUpload = async (file: File, isEditing = false) => {
     if (!file) return;
 
@@ -61,16 +102,16 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
       return;
     }
 
-    if (file.size > 5 * 1024 * 1024) {
-      alert('L\'image doit faire moins de 5MB');
-      return;
-    }
-
     try {
       setUploadingImage(true);
-      console.log('Upload image en cours...', file.name);
+      console.log(`Fichier original: ${file.name} - ${(file.size / 1024 / 1024).toFixed(2)} MB`);
       
-      const imageUrl = await ProductService.uploadImage(file);
+      // Compresser l'image avant upload
+      const compressedFile = await compressImage(file, 800, 0.8);
+      console.log(`Fichier compressé: ${compressedFile.name} - ${(compressedFile.size / 1024 / 1024).toFixed(2)} MB`);
+      
+      // Uploader l'image compressée
+      const imageUrl = await ProductService.uploadImage(compressedFile);
       
       if (isEditing && editingProduct) {
         setEditingProduct({...editingProduct, image_url: imageUrl});
@@ -78,10 +119,10 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
         setNewProduct({...newProduct, image_url: imageUrl});
       }
 
-      alert('Image uploadée avec succès !');
+      alert(`Image optimisée et uploadée avec succès !\nTaille réduite de ${(file.size / 1024 / 1024).toFixed(2)} MB à ${(compressedFile.size / 1024 / 1024).toFixed(2)} MB`);
     } catch (error) {
-      console.error('Erreur upload image:', error);
-      alert('Erreur lors de l\'upload de l\'image');
+      console.error('Erreur compression/upload image:', error);
+      alert('Erreur lors de l\'optimisation/upload de l\'image');
     } finally {
       setUploadingImage(false);
     }
@@ -100,7 +141,6 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
       
       setProducts([...products, addedProduct]);
       
-      // CORRIGÉ : Réinitialiser avec des 0 au lieu de 100
       setNewProduct({
         nom: '',
         marque: '',
@@ -253,7 +293,6 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
         <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 gap-4">
           <h2 className="text-xl md:text-2xl font-bold">Panel Administrateur</h2>
           <div className="flex gap-2 self-end md:self-auto">
-            {/* NOUVEAU : Bouton QR Code */}
             <button
               onClick={() => setShowQR(!showQR)}
               className="px-3 py-2 md:px-4 md:py-2 bg-purple-500 text-white rounded hover:bg-purple-600 text-sm md:text-base"
@@ -279,7 +318,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
           </div>
         </div>
 
-        {/* NOUVEAU : Modal QR Code */}
+        {/* Modal QR Code */}
         {showQR && (
           <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
             <div className="bg-white rounded-lg p-6 text-center max-w-sm w-full">
@@ -329,7 +368,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
         {/* Contenu selon l'onglet actif */}
         {activeTab === 'products' ? (
           <>
-            {/* CORRIGÉ : Statistiques côte à côte et responsive */}
+            {/* Statistiques côte à côte et responsive */}
             <div className="grid grid-cols-1 md:grid-cols-3 gap-3 mb-6">
               <div className="bg-blue-100 p-3 rounded text-center">
                 <h3 className="font-semibold text-sm">Produits</h3>
@@ -364,10 +403,11 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
 
                   return (
                     <div className="space-y-4">
-                      {/* Section image EN PREMIER */}
+                      {/* Section image EN PREMIER avec indicateur d'optimisation */}
                       <div>
                         <label className="block text-sm font-medium text-gray-700 mb-2">
-                          Image du produit
+                          Image du produit 
+                          <span className="text-xs text-green-600 ml-2">✨ Optimisation automatique WebP</span>
                         </label>
                         
                         <div className="border-2 border-dashed border-gray-300 rounded-lg p-4 text-center">
@@ -390,6 +430,9 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
                             <div className="space-y-2">
                               <div className="text-gray-400 text-4xl">📸</div>
                               <p className="text-gray-500">Cliquez pour ajouter une image</p>
+                              <p className="text-xs text-green-600">
+                                L'image sera automatiquement optimisée et convertie en WebP
+                              </p>
                             </div>
                           )}
                           
@@ -408,7 +451,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
                           
                           {uploadingImage && (
                             <p className="text-purple-600 text-sm mt-2">
-                              Upload en cours...
+                              🔄 Optimisation et upload en cours...
                             </p>
                           )}
                         </div>
@@ -423,7 +466,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
                         className="w-full p-2 border rounded text-sm"
                       />
 
-                      {/* CORRIGÉ : Autres champs avec 0 par défaut et couleurs grises */}
+                      {/* Autres champs */}
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <input
                           type="text"
@@ -540,7 +583,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
                 </div>
               </div>
 
-              {/* Liste des produits */}
+              {/* Liste des produits - reste identique */}
               <div>
                 <h3 className="text-lg font-semibold mb-4">Produits actuels ({products.length})</h3>
                 <div className="max-h-96 overflow-y-auto bg-white border rounded">
