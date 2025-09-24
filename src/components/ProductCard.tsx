@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Product } from '../types';
+import { getOptimizedImageUrl, imagePresets } from '../lib/imageUtils';
 
 interface ProductCardProps {
   product: Product;
@@ -10,6 +11,7 @@ interface ProductCardProps {
 const ProductCard: React.FC<ProductCardProps> = ({ product, onAddToCart }) => {
   const [showModal, setShowModal] = useState(false);
   const [quantity, setQuantity] = useState(1);
+  const [imageError, setImageError] = useState(false);
 
   const calculateRealPrice = () => {
     if (product.quantite_reference && product.quantite_reference > 0) {
@@ -22,6 +24,17 @@ const ProductCard: React.FC<ProductCardProps> = ({ product, onAddToCart }) => {
   const finalPrice = realPrice * (1 - (product.reduction || 0) / 100);
   const stockQuantity = product.stock_unite || product.quantite_reelle || 0;
 
+  // URLs optimisées pour les différentes tailles
+  const cardImageUrl = getOptimizedImageUrl(product.image_url, imagePresets.card);
+  const modalImageUrl = getOptimizedImageUrl(product.image_url, imagePresets.modal);
+
+  // Debug pour voir les données
+ console.log("Debug image:", JSON.stringify({
+  productName: product.nom,
+  imageUrl: product.image_url,
+  optimizedUrl: cardImageUrl
+}, null, 2));
+
   const handleAddToCart = () => {
     for (let i = 0; i < quantity; i++) {
       onAddToCart(product);
@@ -30,15 +43,21 @@ const ProductCard: React.FC<ProductCardProps> = ({ product, onAddToCart }) => {
     setQuantity(1);
   };
 
+  const handleImageError = () => {
+    setImageError(true);
+  };
+
   return (
     <>
       <div className="bg-white rounded-xl shadow-md overflow-hidden hover:shadow-lg transition-shadow duration-300 cursor-pointer" onClick={() => setShowModal(true)}>
         <div className="relative h-48 bg-gray-100">
-          {product.image_url ? (
+          {cardImageUrl && !imageError ? (
             <img 
-              src={product.image_url} 
+              src={cardImageUrl}
               alt={product.nom} 
-              className="w-full h-full object-contain p-2 hover:scale-105 transition-transform duration-300" 
+              className="w-full h-full object-contain p-2 hover:scale-105 transition-transform duration-300"
+              loading="lazy"
+              onError={handleImageError}
             />
           ) : (
             <div className="w-full h-full flex items-center justify-center text-gray-400">📷</div>
@@ -89,11 +108,12 @@ const ProductCard: React.FC<ProductCardProps> = ({ product, onAddToCart }) => {
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6 p-6">
                 <div className="relative">
                   <div className="aspect-square bg-gray-100 rounded-lg overflow-hidden">
-                    {product.image_url ? (
+                    {modalImageUrl && !imageError ? (
                       <img 
-                        src={product.image_url} 
+                        src={modalImageUrl}
                         alt={product.nom} 
-                        className="w-full h-full object-contain p-4" 
+                        className="w-full h-full object-contain p-4"
+                        onError={handleImageError}
                       />
                     ) : (
                       <div className="w-full h-full flex items-center justify-center text-gray-400">📷</div>
