@@ -13,7 +13,7 @@ import ProductCard from './components/ProductCard';
 import Cart from './components/Cart';
 import FloatingCartIcon from './components/FloatingCartIcon';
 import CheckoutModal from './components/CheckoutModal';
-import AdminPanel from './components/AdminPanel.tsx.old';
+import AdminPanel from './components/AdminPanel';
 import { ProductService } from './services/productService';
 
 const App: React.FC = () => {
