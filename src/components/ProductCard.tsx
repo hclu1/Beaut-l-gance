@@ -22,7 +22,9 @@ const ProductCard: React.FC<ProductCardProps> = ({ product, onAddToCart }) => {
 
   const realPrice = calculateRealPrice();
   const finalPrice = realPrice * (1 - (product.reduction || 0) / 100);
-  const stockQuantity = product.stock_unite ?? product.quantite_reelle ?? 0;
+  const stockQuantity = product.stock_unite ?? 0;
+
+
 
   // URLs optimisées pour les différentes tailles
   const cardImageUrl = getOptimizedImageUrl(product.image_url, imagePresets.card);

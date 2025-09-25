@@ -254,16 +254,17 @@ const App: React.FC = () => {
 
   // Filtrage des produits selon catégorie, recherche ET stock
   const filteredProducts = products.filter(product => {
-    const matchesCat = !selectedCat || product.categorie === selectedCat;
-    const matchesSearch = !searchTerm ||
-      product.nom.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      product.marque.toLowerCase().includes(searchTerm.toLowerCase());
-    
-    // Masquer les produits en rupture de stock (stock_unite seulement)
-    const hasStock = (product.stock_unite ?? 0) > 0;
-    
-    return matchesCat && matchesSearch && hasStock;
-  });
+  const matchesCat = !selectedCat || product.categorie === selectedCat;
+  const matchesSearch = !searchTerm ||
+    product.nom.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    product.marque.toLowerCase().includes(searchTerm.toLowerCase());
+  
+  const hasStock = (product.stock_unite ?? 0) > 0;
+  
+ 
+  
+  return matchesCat && matchesSearch && hasStock;
+});
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-pink-50 via-purple-50 to-pink-100 relative overflow-hidden">
