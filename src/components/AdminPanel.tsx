@@ -377,7 +377,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
               <div className="bg-purple-100 p-3 rounded text-center">
                 <h3 className="font-semibold text-sm">Stock Total</h3>
                 <p className="text-xl md:text-2xl font-bold">
-                  {products.reduce((sum, p) => sum + (p.stock_unite || 0), 0)}
+                  {products.reduce((sum, p) => sum + (p.stock_unite ?? 0), 0)}
                 </p>
               </div>
               <div className="bg-orange-100 p-3 rounded text-center">
@@ -616,7 +616,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
                           <div className="flex-1">
                             <div className="font-medium text-sm md:text-base">{product.nom}</div>
                             <div className="text-xs md:text-sm text-gray-600">
-                              {product.marque} • {calculateRealPrice(product).toFixed(2)}€ • Stock: {product.stock_unite} • {product.emplacement_stock}
+                              {product.marque} • {calculateRealPrice(product).toFixed(2)}€ • Stock: {product.stock_unite ?? 0} • {product.emplacement_stock}
                             </div>
                             <div className="text-xs text-gray-500">
                               {product.quantite_reelle}ml/gr réel ({product.quantite_reference}ml/gr ref. = {product.prix_reference}€)

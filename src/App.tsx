@@ -120,7 +120,9 @@ const App: React.FC = () => {
 
   // Gestion panier : ajout produit avec mise à jour Supabase
   const addToCart = async (product: Product) => {
-    if (product.quantite_reelle <= 0) {
+    const stockQuantity = product.stock_unite ?? 0;
+    
+    if (stockQuantity <= 0) {
       alert('Produit en rupture de stock');
       return;
     }
@@ -135,11 +137,11 @@ const App: React.FC = () => {
     }
 
     try {
-      const newStock = product.quantite_reelle - 1;
+      const newStock = stockQuantity - 1;
       await ProductService.updateStock(product.id, newStock);
       
       setProducts(products.map(p =>
-        p.id === product.id ? { ...p, quantite_reelle: newStock } : p
+        p.id === product.id ? { ...p, stock_unite: newStock } : p
       ));
     } catch (error) {
       console.error('Erreur mise à jour stock:', error);
@@ -155,11 +157,12 @@ const App: React.FC = () => {
     try {
       const product = products.find(p => p.id === removedItem.id);
       if (product) {
-        const newStock = product.quantite_reelle + removedItem.quantite_achat;
+        const currentStock = product.stock_unite ?? 0;
+        const newStock = currentStock + removedItem.quantite_achat;
         await ProductService.updateStock(product.id, newStock);
         
         setProducts(products.map(p =>
-          p.id === removedItem.id ? { ...p, quantite_reelle: newStock } : p
+          p.id === removedItem.id ? { ...p, stock_unite: newStock } : p
         ));
       }
     } catch (error) {
@@ -178,9 +181,12 @@ const App: React.FC = () => {
     const diff = newQuantity - item.quantite_achat;
 
     const product = products.find(p => p.id === item.id);
-    if (product && diff > 0 && product.quantite_reelle < diff) {
-      alert('Stock insuffisant');
-      return;
+    if (product) {
+      const currentStock = product.stock_unite ?? 0;
+      if (diff > 0 && currentStock < diff) {
+        alert('Stock insuffisant');
+        return;
+      }
     }
 
     const updatedCart = [...cart];
@@ -189,11 +195,12 @@ const App: React.FC = () => {
 
     try {
       if (product) {
-        const newStock = product.quantite_reelle - diff;
+        const currentStock = product.stock_unite ?? 0;
+        const newStock = currentStock - diff;
         await ProductService.updateStock(product.id, newStock);
         
         setProducts(products.map(p =>
-          p.id === item.id ? { ...p, quantite_reelle: newStock } : p
+          p.id === item.id ? { ...p, stock_unite: newStock } : p
         ));
       }
     } catch (error) {
@@ -204,7 +211,7 @@ const App: React.FC = () => {
   // Finalisation commande avec sauvegarde Supabase
   const handleCheckout = async (customerInfo: any) => {
     const total = cart.reduce((sum, item) =>
-      sum + (item.prix_reference * (1 - item.reduction / 100) * item.quantite_achat), 0
+      sum + (item.prix_reference * (1 - (item.reduction ?? 0) / 100) * item.quantite_achat), 0
     );
 
     const newOrder: Order = {
@@ -245,13 +252,17 @@ const App: React.FC = () => {
     }
   };
 
-  // Filtrage des produits selon catégorie et recherche
+  // Filtrage des produits selon catégorie, recherche ET stock
   const filteredProducts = products.filter(product => {
     const matchesCat = !selectedCat || product.categorie === selectedCat;
     const matchesSearch = !searchTerm ||
       product.nom.toLowerCase().includes(searchTerm.toLowerCase()) ||
       product.marque.toLowerCase().includes(searchTerm.toLowerCase());
-    return matchesCat && matchesSearch;
+    
+    // Masquer les produits en rupture de stock (stock_unite seulement)
+    const hasStock = (product.stock_unite ?? 0) > 0;
+    
+    return matchesCat && matchesSearch && hasStock;
   });
 
   return (
