@@ -118,6 +118,14 @@ const App: React.FC = () => {
     }
   };
 
+  // Fonction pour calculer le prix réel d'un produit
+  const calculateRealPrice = (product: Product) => {
+    if (product.quantite_reference && product.quantite_reference > 0) {
+      return (product.prix_reference / product.quantite_reference) * (product.quantite_reelle || product.quantite_reference);
+    }
+    return product.prix_reference;
+  };
+
   // Gestion panier : ajout produit avec mise à jour Supabase
   const addToCart = async (product: Product) => {
     const stockQuantity = product.stock_unite ?? 0;
@@ -210,9 +218,12 @@ const App: React.FC = () => {
 
   // Finalisation commande avec sauvegarde Supabase
   const handleCheckout = async (customerInfo: any) => {
-    const total = cart.reduce((sum, item) =>
-      sum + (item.prix_reference * (1 - (item.reduction ?? 0) / 100) * item.quantite_achat), 0
-    );
+    // Calculer le total en utilisant le prix réel de chaque produit
+    const total = cart.reduce((sum, item) => {
+      const realPrice = calculateRealPrice(item);
+      const finalPrice = realPrice * (1 - (item.reduction ?? 0) / 100);
+      return sum + finalPrice * item.quantite_achat;
+    }, 0);
 
     const newOrder: Order = {
       id: Date.now().toString(),
@@ -254,17 +265,43 @@ const App: React.FC = () => {
 
   // Filtrage des produits selon catégorie, recherche ET stock
   const filteredProducts = products.filter(product => {
-  const matchesCat = !selectedCat || product.categorie === selectedCat;
-  const matchesSearch = !searchTerm ||
-    product.nom.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    product.marque.toLowerCase().includes(searchTerm.toLowerCase());
-  
-  const hasStock = (product.stock_unite ?? 0) > 0;
-  
- 
-  
-  return matchesCat && matchesSearch && hasStock;
-});
+    const matchesCat = !selectedCat || product.categorie === selectedCat;
+    const matchesSearch = !searchTerm ||
+      product.nom.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      product.marque.toLowerCase().includes(searchTerm.toLowerCase());
+    
+    const hasStock = (product.stock_unite ?? 0) > 0;
+    
+    return matchesCat && matchesSearch && hasStock;
+  });
+
+  // Regrouper les produits par nom et marque (correction du regroupement)
+  const groupProductsByNameAndBrand = (products: Product[]) => {
+    const groups: { [key: string]: Product[] } = {};
+    
+    products.forEach(product => {
+      // Utiliser uniquement le nom et la marque pour regrouper
+      const key = `${product.nom}-${product.marque}`;
+      if (!groups[key]) {
+        groups[key] = [];
+      }
+      groups[key].push(product);
+    });
+    
+    return groups;
+  };
+
+  // Regrouper les produits filtrés
+  const groupedProducts = Object.values(
+    filteredProducts.reduce((acc, product) => {
+      const key = `${product.nom}-${product.marque}`;
+      if (!acc[key]) {
+        acc[key] = [];
+      }
+      acc[key].push(product);
+      return acc;
+    }, {} as Record<string, Product[]>)
+  );
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-pink-50 via-purple-50 to-pink-100 relative overflow-hidden">
@@ -360,25 +397,31 @@ const App: React.FC = () => {
         {/* Grille des produits */}
         <motion.div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6 mb-8" layout>
           <AnimatePresence>
-            {filteredProducts.map((product, index) => (
-              <motion.div
-                key={product.id}
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: -20 }}
-                transition={{ delay: index * 0.1 }}
-                layout
-              >
-                <ProductCard
-                  product={product}
-                  onAddToCart={addToCart}
-                />
-              </motion.div>
-            ))}
+            {groupedProducts.map((variants, index) => {
+              // Prendre la première variante comme produit principal
+              const mainProduct = variants[0];
+              
+              return (
+                <motion.div
+                  key={mainProduct.id}
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: -20 }}
+                  transition={{ delay: index * 0.1 }}
+                  layout
+                >
+                  <ProductCard
+                    product={mainProduct}
+                    variants={variants} // Passer toutes les variantes
+                    onAddToCart={addToCart}
+                  />
+                </motion.div>
+              );
+            })}
           </AnimatePresence>
         </motion.div>
 
-        {filteredProducts.length === 0 && (
+        {groupedProducts.length === 0 && (
           <motion.div className="text-center py-12" initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
             <div className="text-4xl md:text-6xl mb-4">🔍</div>
             <h3 className="text-lg md:text-xl font-semibold text-gray-600 mb-2">Aucun produit trouvé</h3>

@@ -1,6 +1,7 @@
 import { createClient } from '@supabase/supabase-js';
 import { Product, Order } from '../types';
 
+// Configuration Supabase
 const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
 const supabaseKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
 
@@ -13,6 +14,15 @@ if (!supabaseUrl || !supabaseKey) {
 }
 
 export const supabase = createClient(supabaseUrl || '', supabaseKey || '');
+
+// ===== FONCTIONS UTILITAIRES =====
+
+// Générer un ID de variant unique
+const generateVariantId = (nom: string, marque: string): string => {
+  return `${nom.toLowerCase().replace(/\s+/g, '-')}-${marque.toLowerCase().replace(/\s+/g, '-')}`;
+};
+
+// ===== GESTION DES IMAGES =====
 
 export const ProductService = {
   // Upload d'une image vers Supabase Storage
@@ -71,6 +81,8 @@ export const ProductService = {
     }
   },
 
+  // ===== GESTION DES PRODUITS =====
+
   // Récupérer tous les produits
   async getAllProducts(): Promise<Product[]> {
     try {
@@ -99,14 +111,43 @@ export const ProductService = {
     try {
       console.log('ProductService: Ajout produit...', product.nom);
       
-      // S'assurer que tous les nouveaux champs sont présents
-      const productToInsert = {
-        ...product,
-        quantite_reference: product.quantite_reference || 100,
-        stock_unite: product.stock_unite || 0,
-        emplacement_stock: product.emplacement_stock || '',
-        description: product.description || ''
+      // Créer un objet avec les champs valides
+      const productToInsert: any = {
+        nom: product.nom,
+        marque: product.marque,
+        prix_reference: product.prix_reference,
+        reduction: product.reduction || 0,
+        image_url: product.image_url || '',
+        categorie: product.categorie || 'makeup'
       };
+      
+      // Ajouter les champs optionnels uniquement s'ils existent
+      if (product.quantite_reference !== undefined) {
+        productToInsert.quantite_reference = product.quantite_reference;
+      }
+      
+      if (product.quantite_reelle !== undefined) {
+        productToInsert.quantite_reelle = product.quantite_reelle;
+      }
+      
+      if (product.stock_unite !== undefined) {
+        productToInsert.stock_unite = product.stock_unite;
+      }
+      
+      // Garder le champ emplacement_stock pour l'admin
+      if (product.emplacement_stock !== undefined) {
+        productToInsert.emplacement_stock = product.emplacement_stock;
+      }
+      
+      if (product.description !== undefined) {
+        productToInsert.description = product.description;
+      }
+      
+      if (product.variant_id !== undefined) {
+        productToInsert.variant_id = product.variant_id;
+      }
+      
+      console.log('Données à insérer:', productToInsert);
       
       const { data, error } = await supabase
         .from('products')
@@ -135,7 +176,7 @@ export const ProductService = {
       const { error } = await supabase
         .from('products')
         .update({ 
-          quantite_reelle: newStock, 
+          stock_unite: newStock,
           updated_at: new Date().toISOString() 
         })
         .eq('id', productId);
@@ -199,12 +240,14 @@ export const ProductService = {
     }
   },
 
+  // ===== GESTION DES COMMANDES =====
+
   // Sauvegarder une commande
   async saveOrder(order: Order): Promise<void> {
     try {
       console.log('ProductService: Sauvegarde commande', order.id);
       
-      // D'abord, insérer la commande
+      // Insérer la commande
       const { error: orderError } = await supabase
         .from('orders')
         .insert([{
@@ -222,7 +265,7 @@ export const ProductService = {
         throw orderError;
       }
 
-      // Ensuite, insérer les items de la commande
+      // Insérer les items de la commande
       const orderItems = order.items.map(item => ({
         order_id: order.id,
         product_id: item.id,
@@ -299,12 +342,11 @@ export const ProductService = {
     }
   },
 
-  // Mettre à jour le statut d'une commande - VERSION CORRIGÉE
+  // Mettre à jour le statut d'une commande
   async updateOrderStatus(orderId: string, newStatus: string): Promise<void> {
     try {
       console.log(`ProductService: Changement statut commande ${orderId} vers ${newStatus}`);
       
-      // Mettre à jour le statut dans Supabase
       const { data, error } = await supabase
         .from('orders')
         .update({ status: newStatus })
@@ -321,20 +363,19 @@ export const ProductService = {
         throw new Error('Commande non trouvée');
       }
 
-      console.log('Statut mis à jour avec succès dans Supabase:', data[0]);
-      return;
+      console.log('Statut mis à jour avec succès:', data[0]);
     } catch (error) {
       console.error('Exception updateOrderStatus:', error);
       throw error;
     }
   },
 
-  // Supprimer une commande définitivement
+  // Supprimer une commande
   async deleteOrder(orderId: string): Promise<void> {
     try {
       console.log(`ProductService: Suppression commande ${orderId}`);
       
-      // Supprimer d'abord les items de la commande (à cause des contraintes de clé étrangère)
+      // Supprimer d'abord les items de la commande
       const { error: itemsError } = await supabase
         .from('order_items')
         .delete()
@@ -361,5 +402,70 @@ export const ProductService = {
       console.error('Exception deleteOrder:', error);
       throw error;
     }
+  },
+  
+  // ===== GESTION DES VARIANTES =====
+  
+  // Ajouter un produit avec gestion des variantes
+  async addProductWithVariant(productData: Partial<Product>): Promise<Product> {
+    try {
+      // Vérifier si des produits similaires existent déjà
+      const similarProducts = await this.getSimilarProducts(productData.nom || '', productData.marque || '');
+      
+      let variantId: string;
+      
+      if (similarProducts.length > 0) {
+        // Utiliser le variant_id du premier produit similaire trouvé
+        variantId = similarProducts[0].variant_id || generateVariantId(productData.nom || '', productData.marque || '');
+      } else {
+        // Générer un nouveau variant_id
+        variantId = generateVariantId(productData.nom || '', productData.marque || '');
+      }
+      
+      // Ajouter le variant_id au produit
+      const productWithVariant = {
+        ...productData,
+        variant_id: variantId
+      };
+      
+      // Utiliser la fonction existante pour ajouter le produit
+      return await this.addProduct(productWithVariant as Omit<Product, 'id'>);
+    } catch (error) {
+      console.error('Erreur lors de l\'ajout du produit avec variante:', error);
+      throw error;
+    }
+  },
+
+  // Récupérer les produits similaires (même nom et marque)
+  async getSimilarProducts(nom: string, marque: string): Promise<Product[]> {
+    try {
+      // Récupérer tous les produits
+      const allProducts = await this.getAllProducts();
+      
+      // Filtrer pour trouver les produits avec le même nom et la même marque
+      return allProducts.filter(product => 
+        product.nom.toLowerCase() === nom.toLowerCase() && 
+        product.marque.toLowerCase() === marque.toLowerCase()
+      );
+    } catch (error) {
+      console.error('Erreur lors de la recherche de produits similaires:', error);
+      return [];
+    }
+  },
+
+  // Récupérer toutes les variantes d'un produit
+  async getProductVariants(variantId: string): Promise<Product[]> {
+    try {
+      // Récupérer tous les produits
+      const allProducts = await this.getAllProducts();
+      
+      // Filtrer pour trouver toutes les variantes
+      return allProducts.filter(product => product.variant_id === variantId);
+    } catch (error) {
+      console.error('Erreur lors de la récupération des variantes:', error);
+      return [];
+    }
   }
 };
+
+export default ProductService;

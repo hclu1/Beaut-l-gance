@@ -22,6 +22,11 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
   const [activeTab, setActiveTab] = useState<'products' | 'orders'>('products');
   const [showQR, setShowQR] = useState(false);
   
+  // NOUVEAUX ÉTATS pour la gestion des variantes
+  const [addingVariant, setAddingVariant] = useState<boolean>(false);
+  const [variantBaseProduct, setVariantBaseProduct] = useState<Product | null>(null);
+  const [similarProducts, setSimilarProducts] = useState<Product[]>([]);
+  
   const [newProduct, setNewProduct] = useState({
     nom: '',
     marque: '',
@@ -128,7 +133,63 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
     }
   };
 
-  // Ajouter un produit dans Supabase
+  // NOUVELLE FONCTION pour vérifier les doublons
+  const checkForDuplicates = async () => {
+    if (!newProduct.nom || !newProduct.marque) {
+      alert('Veuillez entrer un nom et une marque pour vérifier les doublons');
+      return;
+    }
+
+    try {
+      const similarProducts = await ProductService.getSimilarProducts(newProduct.nom, newProduct.marque);
+      setSimilarProducts(similarProducts);
+      
+      if (similarProducts.length > 0) {
+        alert(`Produits similaires trouvés (${similarProducts.length}):\n` +
+          similarProducts.map(p => `- ${p.nom} (${p.quantite_reelle}ml/gr)`).join('\n') +
+          '\n\nVous pouvez ajouter une nouvelle variante à ce produit.');
+        
+        // Pré-remplir le formulaire pour ajouter une variante
+        setVariantBaseProduct(similarProducts[0]);
+        setAddingVariant(true);
+        
+        setNewProduct({
+          ...similarProducts[0],
+          quantite_reelle: 0,
+          stock_unite: 0,
+          id: 0, // Pour forcer la création d'un nouveau produit
+        });
+      } else {
+        alert('Aucun produit similaire trouvé. Vous pouvez ajouter un nouveau produit.');
+        setAddingVariant(false);
+        setVariantBaseProduct(null);
+      }
+    } catch (error) {
+      console.error('Erreur lors de la vérification des doublons:', error);
+      alert('Erreur lors de la vérification des doublons');
+    }
+  };
+
+  // NOUVELLE FONCTION pour ajouter une variante
+  const handleAddVariant = (product: Product) => {
+    setVariantBaseProduct(product);
+    setAddingVariant(true);
+    
+    // Pré-remplir le formulaire avec les données du produit de base
+    setNewProduct({
+      ...product,
+      quantite_reelle: 0,
+      stock_unite: 0,
+      id: 0, // Pour forcer la création d'un nouveau produit
+    });
+    
+    // Faire défiler jusqu'au formulaire
+    setTimeout(() => {
+      document.querySelector('.add-product-form')?.scrollIntoView({ behavior: 'smooth' });
+    }, 100);
+  };
+
+  // MODIFIÉE : Ajouter un produit dans Supabase avec gestion des variantes
   const handleAddProduct = async () => {
     if (!newProduct.nom || !newProduct.marque || newProduct.prix_reference <= 0) {
       alert('Veuillez remplir tous les champs obligatoires');
@@ -137,10 +198,26 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
 
     try {
       console.log('Ajout produit dans Supabase...');
-      const addedProduct = await ProductService.addProduct(newProduct);
+      
+      let addedProduct;
+      
+      if (addingVariant && variantBaseProduct) {
+        // Ajout d'une variante à un produit existant
+        addedProduct = await ProductService.addProductWithVariant({
+          ...newProduct,
+          variant_id: variantBaseProduct.variant_id
+        });
+        
+        alert('Variante ajoutée avec succès !');
+      } else {
+        // Ajout d'un nouveau produit
+        addedProduct = await ProductService.addProduct(newProduct);
+        alert('Produit ajouté avec succès dans Supabase !');
+      }
       
       setProducts([...products, addedProduct]);
       
+      // Réinitialiser le formulaire
       setNewProduct({
         nom: '',
         marque: '',
@@ -154,8 +231,12 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
         emplacement_stock: '',
         description: ''
       });
-
-      alert('Produit ajouté avec succès dans Supabase !');
+      
+      // Réinitialiser les états de variante
+      setAddingVariant(false);
+      setVariantBaseProduct(null);
+      setSimilarProducts([]);
+      
     } catch (error) {
       console.error('Erreur ajout produit:', error);
       alert('Erreur lors de l\'ajout du produit');
@@ -390,10 +471,22 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
 
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
               {/* Formulaire d'ajout/modification */}
-              <div className="bg-gray-50 p-4 rounded">
+              <div className="bg-gray-50 p-4 rounded add-product-form">
                 <h3 className="text-lg font-semibold mb-4">
-                  {editingProduct ? 'Modifier le produit' : 'Ajouter un nouveau produit'}
+                  {addingVariant ? 'Ajouter une variante' : (editingProduct ? 'Modifier le produit' : 'Ajouter un nouveau produit')}
                 </h3>
+                
+                {/* Indicateur si on ajoute une variante */}
+                {addingVariant && variantBaseProduct && (
+                  <div className="mb-4 p-3 bg-blue-50 rounded-lg">
+                    <p className="text-blue-700">
+                      <strong>Ajout d'une variante à:</strong> {variantBaseProduct.nom} ({variantBaseProduct.marque})
+                    </p>
+                    <p className="text-blue-600 text-sm">
+                      Les informations de base sont pré-remplies. Modifiez uniquement la quantité réelle et le stock.
+                    </p>
+                  </div>
+                )}
                 
                 {(() => {
                   const currentProduct = editingProduct || newProduct;
@@ -573,17 +666,55 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
                       </button>
                     </>
                   ) : (
-                    <button
-                      onClick={handleAddProduct}
-                      className="px-4 py-2 md:px-6 md:py-2 bg-green-500 text-white rounded hover:bg-green-600 text-sm md:text-base"
-                    >
-                      Ajouter
-                    </button>
+                    <>
+                      <button
+                        onClick={handleAddProduct}
+                        className="px-4 py-2 md:px-6 md:py-2 bg-green-500 text-white rounded hover:bg-green-600 text-sm md:text-base"
+                      >
+                        {addingVariant ? 'Ajouter la variante' : 'Ajouter'}
+                      </button>
+                      
+                      {addingVariant && (
+                        <button
+                          onClick={() => {
+                            setAddingVariant(false);
+                            setVariantBaseProduct(null);
+                            setNewProduct({
+                              nom: '',
+                              marque: '',
+                              prix_reference: 0,
+                              reduction: 0,
+                              image_url: '',
+                              categorie: 'makeup',
+                              quantite_reference: 0,
+                              quantite_reelle: 0,
+                              stock_unite: 0,
+                              emplacement_stock: '',
+                              description: ''
+                            });
+                          }}
+                          className="px-4 py-2 md:px-6 md:py-2 bg-gray-500 text-white rounded hover:bg-gray-600 text-sm md:text-base"
+                        >
+                          Annuler
+                        </button>
+                      )}
+                    </>
                   )}
                 </div>
+                
+                {/* Bouton de vérification des doublons */}
+                {!editingProduct && !addingVariant && (
+                  <button
+                    type="button"
+                    onClick={checkForDuplicates}
+                    className="w-full py-2 bg-yellow-500 text-white rounded hover:bg-yellow-600 mt-2"
+                  >
+                    Vérifier les doublons
+                  </button>
+                )}
               </div>
 
-              {/* Liste des produits - reste identique */}
+              {/* Liste des produits - MODIFIÉE pour grouper les variantes */}
               <div>
                 <h3 className="text-lg font-semibold mb-4">Produits actuels ({products.length})</h3>
                 <div className="max-h-96 overflow-y-auto bg-white border rounded">
@@ -592,53 +723,97 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
                       Aucun produit. Cliquez sur "Recharger" ou ajoutez-en un.
                     </div>
                   ) : (
-                    products.map(product => (
-                      <div key={product.id} className="flex flex-col md:flex-row items-start md:items-center justify-between p-3 border-b hover:bg-gray-50 gap-2">
-                        <div className="flex items-center space-x-3 flex-1">
-                          <div className="w-12 h-12 bg-gray-100 rounded overflow-hidden flex-shrink-0">
-                            {product.image_url ? (
-                              <img 
-                                src={product.image_url} 
-                                alt={product.nom}
-                                className="w-full h-full object-cover"
-                                onError={(e) => {
-                                  const target = e.currentTarget as HTMLImageElement;
-                                  target.src = 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNDgiIGhlaWdodD0iNDgiIHZpZXdCb3g9IjAgMCA0OCA0OCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPHJlY3Qgd2lkdGg9IjQ4IiBoZWlnaHQ9IjQ4IiBmaWxsPSIjRjNGNEY2Ii8+CjxjaXJjbGUgY3g9IjI0IiBjeT0iMjQiIHI9IjE2IiBzdHJva2U9IiM5Q0EzQUYiIHN0cm9rZS13aWR0aD0iMiIvPgo8Y2lyY2xlIGN4PSIyNCIgY3k9IjI0IiByPSI2IiBzdHJva2U9IiM5Q0EzQUYiIHN0cm9rZS13aWR0aD0iMiIvPgo8L3N2Zz4K';
-                                }}
-                              />
-                            ) : (
-                              <div className="w-full h-full flex items-center justify-center text-gray-400 text-xs">
-                                📷
+                    // Grouper les produits par variant_id
+                    Object.entries(
+                      products.reduce((acc, product) => {
+                        const key = product.variant_id || `product-${product.id}`;
+                        if (!acc[key]) acc[key] = [];
+                        acc[key].push(product);
+                        return acc;
+                      }, {} as Record<string, Product[]>)
+                    ).map(([variantId, variants]) => (
+                      <div key={variantId} className="border-b hover:bg-gray-50">
+                        {/* En-tête du groupe de variantes */}
+                        <div className="flex flex-col md:flex-row items-start md:items-center justify-between p-3 bg-gray-100">
+                          <div className="flex items-center space-x-3 flex-1">
+                            <div className="w-12 h-12 bg-gray-100 rounded overflow-hidden flex-shrink-0">
+                              {variants[0].image_url ? (
+                                <img 
+                                  src={variants[0].image_url} 
+                                  alt={variants[0].nom}
+                                  className="w-full h-full object-cover"
+                                />
+                              ) : (
+                                <div className="w-full h-full flex items-center justify-center text-gray-400 text-xs">
+                                  📷
+                                </div>
+                              )}
+                            </div>
+                            
+                            <div className="flex-1">
+                              <div className="font-medium text-sm md:text-base">{variants[0].nom}</div>
+                              <div className="text-xs md:text-sm text-gray-600">
+                                {variants[0].marque} • {variants.length} variantes
                               </div>
-                            )}
+                            </div>
                           </div>
                           
-                          <div className="flex-1">
-                            <div className="font-medium text-sm md:text-base">{product.nom}</div>
-                            <div className="text-xs md:text-sm text-gray-600">
-                              {product.marque} • {calculateRealPrice(product).toFixed(2)}€ • Stock: {product.stock_unite ?? 0} • {product.emplacement_stock}
-                            </div>
-                            <div className="text-xs text-gray-500">
-                              {product.quantite_reelle}ml/gr réel ({product.quantite_reference}ml/gr ref. = {product.prix_reference}€)
-                            </div>
+                          <div className="flex gap-2 self-end md:self-auto mt-2 md:mt-0">
+                            <button
+                              onClick={() => handleAddVariant(variants[0])}
+                              className="px-2 py-1 md:px-3 md:py-1 bg-blue-500 text-white rounded text-sm hover:bg-blue-600"
+                              title="Ajouter une variante"
+                            >
+                              ➕ Variante
+                            </button>
                           </div>
                         </div>
-                        <div className="flex gap-2 self-end md:self-auto">
-                          <button
-                            onClick={() => setEditingProduct(product)}
-                            className="px-2 py-1 md:px-3 md:py-1 bg-orange-500 text-white rounded text-sm hover:bg-orange-600"
-                            title="Modifier ce produit"
-                          >
-                            ✏️
-                          </button>
-                          <button
-                            onClick={() => handleDeleteProduct(product.id)}
-                            className="px-2 py-1 md:px-3 md:py-1 bg-red-500 text-white rounded text-sm hover:bg-red-600"
-                            title="Supprimer ce produit"
-                          >
-                            🗑️
-                          </button>
-                        </div>
+                        
+                        {/* Liste des variantes */}
+                        {variants.map((product) => (
+                          <div key={product.id} className="flex flex-col md:flex-row items-start md:items-center justify-between p-3 pl-8 border-t hover:bg-gray-50 gap-2">
+                            <div className="flex items-center space-x-3 flex-1">
+                              <div className="w-10 h-10 bg-gray-100 rounded overflow-hidden flex-shrink-0">
+                                {product.image_url ? (
+                                  <img 
+                                    src={product.image_url} 
+                                    alt={product.nom}
+                                    className="w-full h-full object-cover"
+                                  />
+                                ) : (
+                                  <div className="w-full h-full flex items-center justify-center text-gray-400 text-xs">
+                                    📷
+                                  </div>
+                                )}
+                              </div>
+                              
+                              <div className="flex-1">
+                                <div className="font-medium text-sm md:text-base">
+                                  {product.quantite_reelle}ml/gr
+                                </div>
+                                <div className="text-xs md:text-sm text-gray-600">
+                                  Prix: {calculateRealPrice(product).toFixed(2)}€ • Stock: {product.stock_unite ?? 0} • {product.emplacement_stock}
+                                </div>
+                              </div>
+                            </div>
+                            <div className="flex gap-2 self-end md:self-auto">
+                              <button
+                                onClick={() => setEditingProduct(product)}
+                                className="px-2 py-1 md:px-3 md:py-1 bg-orange-500 text-white rounded text-sm hover:bg-orange-600"
+                                title="Modifier cette variante"
+                              >
+                                ✏️
+                              </button>
+                              <button
+                                onClick={() => handleDeleteProduct(product.id)}
+                                className="px-2 py-1 md:px-3 md:py-1 bg-red-500 text-white rounded text-sm hover:bg-red-600"
+                                title="Supprimer cette variante"
+                              >
+                                🗑️
+                              </button>
+                            </div>
+                          </div>
+                        ))}
                       </div>
                     ))
                   )}

@@ -1,45 +1,60 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Product } from '../types';
 import { getOptimizedImageUrl, imagePresets } from '../lib/imageUtils';
+import { ProductService } from '../services/ProductService';
 
 interface ProductCardProps {
   product: Product;
+  variants?: Product[];
   onAddToCart: (product: Product) => void;
 }
 
-const ProductCard: React.FC<ProductCardProps> = ({ product, onAddToCart }) => {
+const ProductCard: React.FC<ProductCardProps> = ({ product, variants = [], onAddToCart }) => {
   const [showModal, setShowModal] = useState(false);
   const [quantity, setQuantity] = useState(1);
+  const [selectedVariant, setSelectedVariant] = useState<Product>(product);
   const [imageError, setImageError] = useState(false);
+  const [loadingVariants, setLoadingVariants] = useState(false);
+  const [allVariants, setAllVariants] = useState<Product[]>(variants);
 
-  const calculateRealPrice = () => {
-    if (product.quantite_reference && product.quantite_reference > 0) {
-      return (product.prix_reference / product.quantite_reference) * (product.quantite_reelle || product.quantite_reference);
+  // Récupérer les variantes si non fournies en props
+  useEffect(() => {
+    const fetchVariants = async () => {
+      if (variants.length === 0 && product.variant_id) {
+        setLoadingVariants(true);
+        try {
+          const productVariants = await ProductService.getProductVariants(product.variant_id);
+          setAllVariants(productVariants);
+        } catch (error) {
+          console.error('Erreur lors de la récupération des variantes:', error);
+        } finally {
+          setLoadingVariants(false);
+        }
+      }
+    };
+
+    fetchVariants();
+  }, [product.variant_id, variants]);
+
+  const calculateRealPrice = (productToCalculate: Product) => {
+    if (productToCalculate.quantite_reference && productToCalculate.quantite_reference > 0) {
+      return (productToCalculate.prix_reference / productToCalculate.quantite_reference) * (productToCalculate.quantite_reelle || productToCalculate.quantite_reference);
     }
-    return product.prix_reference;
+    return productToCalculate.prix_reference;
   };
 
-  const realPrice = calculateRealPrice();
-  const finalPrice = realPrice * (1 - (product.reduction || 0) / 100);
-  const stockQuantity = product.stock_unite ?? 0;
-
-
+  const realPrice = calculateRealPrice(selectedVariant);
+  const finalPrice = realPrice * (1 - (selectedVariant.reduction || 0) / 100);
+  const stockQuantity = selectedVariant.stock_unite ?? 0;
 
   // URLs optimisées pour les différentes tailles
-  const cardImageUrl = getOptimizedImageUrl(product.image_url, imagePresets.card);
-  const modalImageUrl = getOptimizedImageUrl(product.image_url, imagePresets.modal);
-
-  // Debug pour voir les données
- console.log("Debug image:", JSON.stringify({
-  productName: product.nom,
-  imageUrl: product.image_url,
-  optimizedUrl: cardImageUrl
-}, null, 2));
+  const cardImageUrl = getOptimizedImageUrl(selectedVariant.image_url, imagePresets.card);
+  const modalImageUrl = getOptimizedImageUrl(selectedVariant.image_url, imagePresets.modal);
 
   const handleAddToCart = () => {
     for (let i = 0; i < quantity; i++) {
-      onAddToCart(product);
+      onAddToCart(selectedVariant);
     }
     setShowModal(false);
     setQuantity(1);
@@ -49,6 +64,17 @@ const ProductCard: React.FC<ProductCardProps> = ({ product, onAddToCart }) => {
     setImageError(true);
   };
 
+  const handleVariantChange = (variantId: number) => {
+    const variant = allVariants.find(v => v.id === variantId);
+    if (variant) {
+      setSelectedVariant(variant);
+      setQuantity(1); // Réinitialiser la quantité lors du changement de variante
+    }
+  };
+
+  // Vérifier s'il y a plusieurs variantes
+  const hasMultipleVariants = allVariants.length > 1;
+
   return (
     <>
       <div className="bg-white rounded-xl shadow-md overflow-hidden hover:shadow-lg transition-shadow duration-300 cursor-pointer" onClick={() => setShowModal(true)}>
@@ -56,7 +82,7 @@ const ProductCard: React.FC<ProductCardProps> = ({ product, onAddToCart }) => {
           {cardImageUrl && !imageError ? (
             <img 
               src={cardImageUrl}
-              alt={product.nom} 
+              alt={selectedVariant.nom} 
               className="w-full h-full object-contain p-2 hover:scale-105 transition-transform duration-300"
               loading="lazy"
               onError={handleImageError}
@@ -64,30 +90,73 @@ const ProductCard: React.FC<ProductCardProps> = ({ product, onAddToCart }) => {
           ) : (
             <div className="w-full h-full flex items-center justify-center text-gray-400">📷</div>
           )}
-          {product.reduction > 0 && (
+          {selectedVariant.reduction > 0 && (
             <div className="absolute top-2 left-2 bg-red-500 text-white px-2 py-1 rounded-md text-sm font-bold">
-              -{product.reduction}%
+              -{selectedVariant.reduction}%
             </div>
           )}
-          <div className="absolute top-2 right-2 bg-black bg-opacity-50 text-white p-1 rounded-full">🔍</div>
+          {hasMultipleVariants && (
+            <div className="absolute top-2 right-2 bg-blue-500 text-white px-2 py-1 rounded-md text-sm font-bold">
+              {allVariants.length} tailles
+            </div>
+          )}
+          <div className="absolute bottom-2 right-2 bg-black bg-opacity-50 text-white p-1 rounded-full">🔍</div>
         </div>
 
         <div className="p-4">
           <h3 className="font-semibold text-lg text-gray-800 hover:text-purple-600">
-            {product.nom}
+            {selectedVariant.nom}
           </h3>
-          <p className="text-sm text-gray-600">{product.marque}</p>
+          <p className="text-sm text-gray-600">{selectedVariant.marque}</p>
+          
+          {hasMultipleVariants && (
+            <div className="mt-2">
+              {/* Affichage conditionnel : boutons si <=3 variantes, menu déroulant sinon */}
+              {allVariants.length <= 3 ? (
+                <div className="flex flex-wrap gap-1">
+                  {allVariants.map((variant) => (
+                    <button
+                      key={variant.id}
+                      className={`px-2 py-1 text-xs rounded-md border ${
+                        selectedVariant.id === variant.id
+                          ? 'bg-purple-600 text-white border-purple-600'
+                          : 'bg-white text-gray-700 border-gray-300 hover:bg-gray-50'
+                      }`}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleVariantChange(variant.id);
+                      }}
+                    >
+                      {variant.quantite_reelle}ml/gr
+                    </button>
+                  ))}
+                </div>
+              ) : (
+                <select
+                  value={selectedVariant.id}
+                  onChange={(e) => {
+                    e.stopPropagation();
+                    handleVariantChange(parseInt(e.target.value));
+                  }}
+                  className="w-full p-2 border rounded text-sm"
+                  onClick={(e) => e.stopPropagation()}
+                >
+                  {allVariants.map((variant) => (
+                    <option key={variant.id} value={variant.id}>
+                      {variant.quantite_reelle}ml/gr - {calculateRealPrice(variant).toFixed(2)}€
+                    </option>
+                  ))}
+                </select>
+              )}
+            </div>
+          )}
           
           <div className="mt-3">
             <span className="text-xl font-bold text-purple-600">{finalPrice.toFixed(2)}€</span>
-            {product.reduction > 0 && (
+            {selectedVariant.reduction > 0 && (
               <span className="text-sm text-gray-500 line-through ml-2">{realPrice.toFixed(2)}€</span>
             )}
           </div>
-
-          {stockQuantity <= 0 && (
-            <div className="mt-2 text-xs text-red-600 font-medium">Rupture de stock</div>
-          )}
         </div>
       </div>
 
@@ -113,8 +182,8 @@ const ProductCard: React.FC<ProductCardProps> = ({ product, onAddToCart }) => {
                     {modalImageUrl && !imageError ? (
                       <img 
                         src={modalImageUrl}
-                        alt={product.nom} 
-                        className="w-full h-full object-contain p-4"
+                        alt={selectedVariant.nom} 
+                        className="w-full h-full object-contain p-2"
                         onError={handleImageError}
                       />
                     ) : (
@@ -123,102 +192,110 @@ const ProductCard: React.FC<ProductCardProps> = ({ product, onAddToCart }) => {
                   </div>
                 </div>
 
-                <div className="flex flex-col">
-                  <div className="flex justify-between items-start mb-4">
-                    <div>
-                      <h2 className="text-2xl md:text-3xl font-bold text-gray-800 mb-2">{product.nom}</h2>
-                      <p className="text-lg text-gray-600">{product.marque}</p>
-                    </div>
-                    <button onClick={() => setShowModal(false)} className="text-gray-500 hover:text-gray-700 text-2xl">✕</button>
-                  </div>
-
-                  <div className="mb-6">
-                    <span className="text-3xl font-bold text-purple-600">{finalPrice.toFixed(2)}€</span>
-                    {product.reduction > 0 && (
-                      <span className="text-xl text-gray-500 line-through ml-3">{realPrice.toFixed(2)}€</span>
+                <div className="space-y-4">
+                  <h2 className="text-2xl font-bold text-gray-800">{selectedVariant.nom}</h2>
+                  <p className="text-gray-600">{selectedVariant.marque}</p>
+                  
+                  {/* Menu déroulant des quantités avec prix */}
+                  <div className="mt-4">
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Quantité
+                    </label>
+                    {/* Affichage conditionnel : boutons si <=3 variantes, menu déroulant sinon */}
+                    {allVariants.length <= 3 ? (
+                      <div className="flex flex-wrap gap-2">
+                        {allVariants.map((variant) => (
+                          <button
+                            key={variant.id}
+                            className={`px-4 py-2 rounded-md border ${
+                              selectedVariant.id === variant.id
+                                ? 'bg-purple-600 text-white border-purple-600'
+                                : 'bg-white text-gray-700 border-gray-300 hover:bg-gray-50'
+                            }`}
+                            onClick={() => {
+                              setSelectedVariant(variant);
+                              setQuantity(1);
+                            }}
+                          >
+                            {variant.quantite_reelle}ml/gr - {calculateRealPrice(variant).toFixed(2)}€
+                          </button>
+                        ))}
+                      </div>
+                    ) : (
+                      <select
+                        value={selectedVariant.id}
+                        onChange={(e) => {
+                          const variant = allVariants.find(v => v.id === parseInt(e.target.value));
+                          if (variant) {
+                            setSelectedVariant(variant);
+                            setQuantity(1);
+                          }
+                        }}
+                        className="w-full p-2 border rounded"
+                      >
+                        {allVariants.map((variant) => (
+                          <option key={variant.id} value={variant.id}>
+                            {variant.quantite_reelle}ml/gr - {calculateRealPrice(variant).toFixed(2)}€
+                          </option>
+                        ))}
+                      </select>
                     )}
                   </div>
 
-                  <div className="space-y-4 mb-6">
-                    <div className="grid grid-cols-2 gap-4">
-                      <div className="bg-green-50 p-4 rounded-lg">
-                        <h4 className="font-semibold text-green-800 mb-2">Disponibilité</h4>
-                        <div className="text-sm">Stock: {stockQuantity} unités</div>
-                        
-                        {product.emplacement_stock && Array.isArray(product.emplacement_stock) && product.emplacement_stock.length > 0 && (
-                          <div className="text-sm mt-2">
-                            <div className="font-medium text-green-700 mb-1">Emplacements:</div>
-                            <div className="flex flex-wrap gap-1">
-                              {product.emplacement_stock.map((emplacement, index) => (
-                                <span key={index} className="text-xs bg-green-100 px-2 py-1 rounded">
-                                  📍 {emplacement}
-                                </span>
-                              ))}
-                            </div>
-                          </div>
-                        )}
-                        
-                        {product.emplacement_stock && typeof product.emplacement_stock === 'string' && (
-                          <div className="text-sm mt-1">📍 {product.emplacement_stock}</div>
-                        )}
-                      </div>
-                      
-                      {product.quantite_reelle && (
-                        <div className="bg-blue-50 p-4 rounded-lg">
-                          <h4 className="font-semibold text-blue-800 mb-2">Quantité</h4>
-                          <div className="text-sm">{product.quantite_reelle}ml/gr</div>
-                        </div>
-                      )}
+                  {/* Quantité d'achat */}
+                  <div className="mt-4">
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Quantité d'achat
+                    </label>
+                    <div className="flex items-center">
+                      <button
+                        className="px-3 py-1 bg-gray-200 rounded-l-md hover:bg-gray-300"
+                        onClick={() => setQuantity(Math.max(1, quantity - 1))}
+                      >
+                        -
+                      </button>
+                      <input
+                        type="number"
+                        min="1"
+                        max={stockQuantity}
+                        value={quantity}
+                        onChange={(e) => setQuantity(Math.max(1, Math.min(stockQuantity, parseInt(e.target.value) || 1)))}
+                        className="w-16 text-center border-t border-b border-gray-300"
+                      />
+                      <button
+                        className="px-3 py-1 bg-gray-200 rounded-r-md hover:bg-gray-300"
+                        onClick={() => setQuantity(Math.min(stockQuantity, quantity + 1))}
+                      >
+                        +
+                      </button>
+                      <span className="ml-4 text-sm text-gray-500">
+                        Stock: {stockQuantity}
+                      </span>
                     </div>
+                  </div>
 
-                    <div className="bg-orange-50 p-4 rounded-lg">
-                      <h4 className="font-semibold text-orange-800 mb-2">Quantité à acheter</h4>
-                      <div className="flex items-center space-x-3">
-                        <button
-                          onClick={() => setQuantity(Math.max(1, quantity - 1))}
-                          className="w-8 h-8 bg-orange-200 hover:bg-orange-300 rounded-full flex items-center justify-center text-orange-800 font-bold"
-                        >
-                          -
-                        </button>
-                        <span className="text-lg font-semibold min-w-[3rem] text-center">{quantity}</span>
-                        <button
-                          onClick={() => setQuantity(Math.min(stockQuantity, quantity + 1))}
-                          disabled={quantity >= stockQuantity}
-                          className="w-8 h-8 bg-orange-200 hover:bg-orange-300 disabled:bg-gray-200 disabled:text-gray-400 rounded-full flex items-center justify-center text-orange-800 font-bold"
-                        >
-                          +
-                        </button>
-                        <div className="text-sm text-gray-600">
-                          Total: <span className="font-semibold text-purple-600">{(finalPrice * quantity).toFixed(2)}€</span>
-                        </div>
-                      </div>
-                    </div>
-
-                    {product.description && (
-                      <div className="bg-gray-50 p-4 rounded-lg">
-                        <h4 className="font-semibold text-gray-800 mb-2">Description</h4>
-                        <div className="text-xs md:text-sm text-gray-600 whitespace-pre-wrap leading-relaxed break-words">
-                          {product.description}
-                        </div>
-                      </div>
+                  {/* Prix */}
+                  <div className="mt-4">
+                    <span className="text-2xl font-bold text-purple-600">{finalPrice.toFixed(2)}€</span>
+                    {selectedVariant.reduction > 0 && (
+                      <span className="text-sm text-gray-500 line-through ml-2">{realPrice.toFixed(2)}€</span>
                     )}
                   </div>
 
-                  <div className="mt-auto grid grid-cols-1 md:grid-cols-2 gap-3">
+                  {/* Boutons d'action */}
+                  <div className="mt-6 flex gap-3">
                     <button
+                      className="flex-1 py-3 px-6 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 transition-colors"
                       onClick={() => setShowModal(false)}
-                      className="py-2 px-4 rounded-lg border border-gray-300 text-gray-700 hover:bg-gray-50 transition-colors duration-300"
                     >
                       Continuer mes achats
                     </button>
                     <button
+                      className="flex-1 py-3 px-6 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors disabled:opacity-50"
                       onClick={handleAddToCart}
-                      disabled={stockQuantity <= 0}
-                      className={`py-2 px-4 rounded-lg font-semibold transition-colors duration-300 ${
-                        stockQuantity <= 0 ? 'bg-gray-300 text-gray-500' : 'bg-purple-600 text-white hover:bg-purple-700'
-                      }`}
+                      disabled={stockQuantity === 0}
                     >
-                      {stockQuantity <= 0 ? 'Rupture de stock' : `Ajouter ${quantity} au panier`}
+                      Ajouter {quantity} au panier
                     </button>
                   </div>
                 </div>

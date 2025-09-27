@@ -148,8 +148,14 @@ const CheckoutModal: React.FC<CheckoutModalProps> = ({
                             <div className="flex-1">
                               <div className="font-medium">{item.nom}</div>
                               <div className="text-gray-500">
-                                {item.marque} • {finalPrice.toFixed(2)}€
+                                {item.marque} • {item.quantite_reelle}ml/gr
                               </div>
+                              {item.reduction > 0 && (
+                                <div className="text-xs text-gray-500">
+                                  <span className="line-through">{realPrice.toFixed(2)}€</span>
+                                  <span className="ml-1">-{item.reduction}%</span>
+                                </div>
+                              )}
                             </div>
                           </div>
                           
@@ -161,6 +167,7 @@ const CheckoutModal: React.FC<CheckoutModalProps> = ({
                                   type="button"
                                   onClick={() => updateQuantity(item.globalIndex, item.quantite_achat - 1)}
                                   className="w-6 h-6 rounded-full bg-gray-200 hover:bg-gray-300 flex items-center justify-center text-gray-600 text-sm"
+                                  disabled={item.quantite_achat <= 1}
                                 >
                                   −
                                 </button>

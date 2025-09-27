@@ -1,4 +1,3 @@
-// components/Cart.tsx
 import React from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { CartItem } from '../types';
@@ -10,9 +9,20 @@ interface CartProps {
 }
 
 const Cart: React.FC<CartProps> = ({ cart, removeFromCart, updateQuantity }) => {
-  const total = cart.reduce((sum, item) => 
-    sum + (item.prix_reference * (1 - item.reduction / 100) * item.quantite_achat), 0
-  );
+  // Fonction pour calculer le prix réel d'un produit
+  const calculateRealPrice = (item: CartItem) => {
+    if (item.quantite_reference && item.quantite_reference > 0) {
+      return (item.prix_reference / item.quantite_reference) * (item.quantite_reelle || item.quantite_reference);
+    }
+    return item.prix_reference;
+  };
+
+  // Calculer le total du panier en utilisant le prix réel
+  const total = cart.reduce((sum, item) => {
+    const realPrice = calculateRealPrice(item);
+    const finalPrice = realPrice * (1 - (item.reduction || 0) / 100);
+    return sum + (finalPrice * item.quantite_achat);
+  }, 0);
 
   return (
     <motion.div 
@@ -39,72 +49,94 @@ const Cart: React.FC<CartProps> = ({ cart, removeFromCart, updateQuantity }) => 
         </div>
       ) : (
         <AnimatePresence>
-          {cart.map((item, index) => (
-            <motion.div 
-              key={`${item.id}-${index}`}
-              className="flex items-center justify-between p-3 border-b border-gray-100 last:border-b-0"
-              initial={{ opacity: 0, x: -20 }}
-              animate={{ opacity: 1, x: 0 }}
-              exit={{ opacity: 0, x: 20 }}
-              transition={{ delay: index * 0.1 }}
-            >
-              <div className="flex items-center gap-3 flex-1">
-                <img 
-                  src={item.image} 
-                  alt={item.nom}
-                  className="w-12 h-12 object-cover rounded-lg"
-                />
-                <div className="flex-1">
-                  <div className="font-medium text-gray-800">{item.nom}</div>
-                  <div className="text-sm text-gray-500">{item.marque}</div>
-                  <div className="text-xs text-gray-400">
-                    {(item.prix_reference * (1 - item.reduction / 100)).toFixed(2)}€ × {item.quantite_achat}
+          {cart.map((item, index) => {
+            const realPrice = calculateRealPrice(item);
+            const finalPrice = realPrice * (1 - (item.reduction || 0) / 100);
+            const itemTotal = finalPrice * item.quantite_achat;
+            
+            return (
+              <motion.div 
+                key={`${item.id}-${index}`}
+                className="flex items-center justify-between p-3 border-b border-gray-100 last:border-b-0"
+                initial={{ opacity: 0, x: -20 }}
+                animate={{ opacity: 1, x: 0 }}
+                exit={{ opacity: 0, x: 20 }}
+                transition={{ delay: index * 0.1 }}
+              >
+                <div className="flex items-center gap-3 flex-1">
+                  <img 
+                    src={item.image_url || 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNDgiIGhlaWdodD0iNDgiIHZpZXdCb3g9IjAgMCA0OCA0OCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPHJlY3Qgd2lkdGg9IjQ4IiBoZWlnaHQ9IjQ4IiBmaWxsPSIjRjNGNEY2Ii8+CjxwYXRoIGQ9Ik0yNCAzNkMzMC42Mjc0IDM2IDM2IDMwLjYyNzQgMzYgMjRDMzYgMTcuMzcyNiAzMC42Mjc0IDEyIDI0IDEyQzE3LjM3MjYgMTIgMTIgMTcuMzcyNiAxMiAyNEMxMiAzMC42Mjc0IDE3LjM3MjYgMzYgMjQgMzZaIiBzdHJva2U9IiM5Q0EzQUYiIHN0cm9rZS13aWR0aD0iMiIgc3Ryb2tlLWxpbmVjYXA9InJvdW5kIiBzdHJva2UtbGluZWpvaW49InJvdW5kIi8+CjxwYXRoIGQ9Ik0yNCAyOEMyNi4yMDkxIDI4IDI4IDI2LjIwOTEgMjggMjRDMjggMjEuNzkwOSAyNi4yMDkxIDIwIDI0IDIwQzIxLjc5MDkgMjAgMjAgMjEuNzkwOSAyMCAyNEMyMCAyNi4yMDkxIDIxLjc5MDkgMjggMjQgMjhaIiBzdHJva2U9IiM5Q0EzQUYiIHN0cm9rZS13aWR0aD0iMiIgc3Ryb2tlLWxpbmVjYXA9InJvdW5kIiBzdHJva2UtbGluZWpvaW49InJvdW5kIi8+Cjwvc3ZnPg=='}
+                    alt={item.nom}
+                    className="w-12 h-12 object-cover rounded-lg"
+                    onError={(e) => {
+                      const target = e.currentTarget as HTMLImageElement;
+                      target.src = 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNDgiIGhlaWdodD0iNDgiIHZpZXdCb3g9IjAgMCA0OCA0OCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPHJlY3Qgd2lkdGg9IjQ4IiBoZWlnaHQ9IjQ4IiBmaWxsPSIjRjNGNEY2Ii8+CjxwYXRoIGQ9Ik0yNCAzNkMzMC42Mjc0IDM2IDM2IDMwLjYyNzQgMzYgMjRDMzYgMTcuMzcyNiAzMC42Mjc0IDEyIDI0IDEyQzE3LjM3MjYgMTIgMTIgMTcuMzcyNiAxMiAyNEMxMiAzMC42Mjc0IDE3LjM3MjYgMzYgMjQgMzZaIiBzdHJva2U9IiM5Q0EzQUYiIHN0cm9rZS13aWR0aD0iMiIgc3Ryb2tlLWxpbmVjYXA9InJvdW5kIiBzdHJva2UtbGluZWpvaW49InJvdW5kIi8+CjxwYXRoIGQ9Ik0yNCAyOEMyNi4yMDkxIDI4IDI4IDI2LjIwOTEgMjggMjRDMjggMjEuNzkwOSAyNi4yMDkxIDIwIDI0IDIwQzIxLjc5MDkgMjAgMjAgMjEuNzkwOSAyMCAyNEMyMCAyNi4yMDkxIDIxLjc5MDkgMjggMjQgMjhaIiBzdHJva2U9IiM5Q0EzQUYiIHN0cm9rZS13aWR0aD0iMiIgc3Ryb2tlLWxpbmVjYXA9InJvdW5kIiBzdHJva2UtbGluZWpvaW49InJvdW5kIi8+Cjwvc3ZnPg==';
+                    }}
+                  />
+                  <div className="flex-1">
+                    <div className="font-medium text-gray-800">{item.nom}</div>
+                    <div className="text-sm text-gray-500">{item.marque}</div>
+                    <div className="text-xs text-gray-400">
+                      {item.quantite_reelle && (
+                        <span>{item.quantite_reelle}ml/gr • </span>
+                      )}
+                      {item.reduction > 0 ? (
+                        <>
+                          <span className="line-through">{realPrice.toFixed(2)}€</span>
+                          <span className="ml-1">{finalPrice.toFixed(2)}€</span>
+                          <span className="ml-1 text-red-500">(-{item.reduction}%)</span>
+                        </>
+                      ) : (
+                        <span>{finalPrice.toFixed(2)}€</span>
+                      )}
+                      <span> × {item.quantite_achat}</span>
+                    </div>
                   </div>
                 </div>
-              </div>
-              
-              <div className="flex items-center gap-2">
-                <div className="flex items-center gap-1">
-                  <button
+                
+                <div className="flex items-center gap-2">
+                  <div className="flex items-center gap-1">
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        updateQuantity(index, item.quantite_achat - 1);
+                      }}
+                      className="w-6 h-6 rounded-full bg-gray-100 text-gray-600 hover:bg-gray-200 flex items-center justify-center text-sm"
+                      disabled={item.quantite_achat <= 1}
+                    >
+                      −
+                    </button>
+                    <span className="w-8 text-center text-sm font-medium">{item.quantite_achat}</span>
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        updateQuantity(index, item.quantite_achat + 1);
+                      }}
+                      className="w-6 h-6 rounded-full bg-gray-100 text-gray-600 hover:bg-gray-200 flex items-center justify-center text-sm"
+                    >
+                      +
+                    </button>
+                  </div>
+                  
+                  <span className="font-bold text-purple-700 min-w-[60px] text-right">
+                    {itemTotal.toFixed(2)}€
+                  </span>
+                  
+                  <motion.button
+                    className="w-8 h-8 rounded-full bg-red-100 text-red-600 hover:bg-red-200 flex items-center justify-center transition-colors"
+                    whileHover={{ scale: 1.1 }}
+                    whileTap={{ scale: 0.9 }}
                     onClick={(e) => {
                       e.stopPropagation();
-                      updateQuantity(index, item.quantite_achat - 1);
+                      removeFromCart(index);
                     }}
-                    className="w-6 h-6 rounded-full bg-gray-100 text-gray-600 hover:bg-gray-200 flex items-center justify-center text-sm"
-                    disabled={item.quantite_achat <= 1}
                   >
-                    −
-                  </button>
-                  <span className="w-8 text-center text-sm font-medium">{item.quantite_achat}</span>
-                  <button
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      updateQuantity(index, item.quantite_achat + 1);
-                    }}
-                    className="w-6 h-6 rounded-full bg-gray-100 text-gray-600 hover:bg-gray-200 flex items-center justify-center text-sm"
-                  >
-                    +
-                  </button>
+                    ✕
+                  </motion.button>
                 </div>
-                
-                <span className="font-bold text-purple-700 min-w-[60px] text-right">
-                  {(item.prix_reference * (1 - item.reduction / 100) * item.quantite_achat).toFixed(2)}€
-                </span>
-                
-                <motion.button
-                  className="w-8 h-8 rounded-full bg-red-100 text-red-600 hover:bg-red-200 flex items-center justify-center transition-colors"
-                  whileHover={{ scale: 1.1 }}
-                  whileTap={{ scale: 0.9 }}
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    removeFromCart(index);
-                  }}
-                >
-                  ✕
-                </motion.button>
-              </div>
-            </motion.div>
-          ))}
+              </motion.div>
+            );
+          })}
         </AnimatePresence>
       )}
       
