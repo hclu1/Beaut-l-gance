@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Product } from '../types';
 import { getOptimizedImageUrl, imagePresets } from '../lib/imageUtils';
-import { ProductService } from '../services/ProductService';
+import { ProductService } from '../services/productService';
 
 interface ProductCardProps {
   product: Product;
