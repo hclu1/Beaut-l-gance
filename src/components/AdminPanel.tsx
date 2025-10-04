@@ -27,6 +27,12 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
   const [variantBaseProduct, setVariantBaseProduct] = useState<Product | null>(null);
   const [similarProducts, setSimilarProducts] = useState<Product[]>([]);
   
+  // États pour le filtre de marque
+  const [selectedBrand, setSelectedBrand] = useState<string>('all');
+  
+  // Extraire toutes les marques uniques des produits
+  const allBrands = Array.from(new Set(products.map(p => p.marque).filter(Boolean))).sort();
+  
   const [newProduct, setNewProduct] = useState({
     nom: '',
     marque: '',
@@ -410,7 +416,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
                 className="mx-auto mb-4 border rounded"
               />
               <p className="text-sm text-gray-600 mb-4">
-                Scannez ce code pour accéder à votre boutique Beauté-légance
+                Scannez ce code pour accéder à votre boutique Beauté&Élégance
               </p>
               <button
                 onClick={() => setShowQR(false)}
@@ -561,13 +567,44 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
 
                       {/* Autres champs */}
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        <input
-                          type="text"
-                          placeholder="Marque"
-                          value={currentProduct.marque}
-                          onChange={(e) => setCurrentProduct({marque: e.target.value})}
-                          className="p-2 border rounded text-sm text-gray-500"
-                        />
+                        {/* Sélecteur de marque amélioré */}
+                        <div className="col-span-2">
+                          <label className="block text-sm font-medium text-gray-700 mb-2">
+                            Marque
+                          </label>
+                          <div className="space-y-2">
+                            <select
+                              value={currentProduct.marque && allBrands.includes(currentProduct.marque) ? currentProduct.marque : 'custom'}
+                              onChange={(e) => {
+                                if (e.target.value === 'custom') {
+                                  setCurrentProduct({marque: ''});
+                                } else {
+                                  setCurrentProduct({marque: e.target.value});
+                                }
+                              }}
+                              className="w-full p-2 border rounded text-sm"
+                            >
+                              <option value="custom">➕ Nouvelle marque (saisir ci-dessous)</option>
+                              {allBrands.length > 0 && <option disabled>─────────────────</option>}
+                              {allBrands.map(brand => (
+                                <option key={brand} value={brand}>{brand}</option>
+                              ))}
+                            </select>
+                            
+                            {/* Champ de saisie pour nouvelle marque */}
+                            {(!currentProduct.marque || !allBrands.includes(currentProduct.marque)) && (
+                              <input
+                                type="text"
+                                placeholder="Saisir la nouvelle marque"
+                                value={currentProduct.marque}
+                                onChange={(e) => setCurrentProduct({marque: e.target.value})}
+                                className="w-full p-2 border rounded text-sm border-blue-300 bg-blue-50"
+                                autoFocus
+                              />
+                            )}
+                          </div>
+                        </div>
+                        
                         <input
                           type="number"
                           step="0.01"
@@ -716,68 +753,64 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
 
               {/* Liste des produits - MODIFIÉE pour grouper les variantes */}
               <div>
-                <h3 className="text-lg font-semibold mb-4">Produits actuels ({products.length})</h3>
+                <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-4 gap-3">
+                  <h3 className="text-lg font-semibold">
+                    Produits actuels 
+                    {selectedBrand !== 'all' && ` - ${selectedBrand}`}
+                  </h3>
+                  
+                  {/* Filtre par marque */}
+                  <select
+                    value={selectedBrand}
+                    onChange={(e) => setSelectedBrand(e.target.value)}
+                    className="px-3 py-2 border rounded text-sm bg-white w-full md:w-auto"
+                  >
+                    <option value="all">📦 Toutes les marques ({products.length})</option>
+                    {allBrands.length > 0 && <option disabled>─────────────────</option>}
+                    {allBrands.map(brand => {
+                      const count = products.filter(p => p.marque === brand).length;
+                      return (
+                        <option key={brand} value={brand}>
+                          {brand} ({count})
+                        </option>
+                      );
+                    })}
+                  </select>
+                </div>
+                
                 <div className="max-h-96 overflow-y-auto bg-white border rounded">
                   {products.length === 0 ? (
                     <div className="p-4 text-center text-gray-500">
                       Aucun produit. Cliquez sur "Recharger" ou ajoutez-en un.
                     </div>
                   ) : (
-                    // Grouper les produits par variant_id
-                    Object.entries(
-                      products.reduce((acc, product) => {
+                    (() => {
+                      const filteredProducts = products.filter(p => selectedBrand === 'all' || p.marque === selectedBrand);
+                      const groupedProducts = filteredProducts.reduce((acc, product) => {
                         const key = product.variant_id || `product-${product.id}`;
                         if (!acc[key]) acc[key] = [];
                         acc[key].push(product);
                         return acc;
-                      }, {} as Record<string, Product[]>)
-                    ).map(([variantId, variants]) => (
-                      <div key={variantId} className="border-b hover:bg-gray-50">
-                        {/* En-tête du groupe de variantes */}
-                        <div className="flex flex-col md:flex-row items-start md:items-center justify-between p-3 bg-gray-100">
-                          <div className="flex items-center space-x-3 flex-1">
-                            <div className="w-12 h-12 bg-gray-100 rounded overflow-hidden flex-shrink-0">
-                              {variants[0].image_url ? (
-                                <img 
-                                  src={variants[0].image_url} 
-                                  alt={variants[0].nom}
-                                  className="w-full h-full object-cover"
-                                />
-                              ) : (
-                                <div className="w-full h-full flex items-center justify-center text-gray-400 text-xs">
-                                  📷
-                                </div>
-                              )}
-                            </div>
-                            
-                            <div className="flex-1">
-                              <div className="font-medium text-sm md:text-base">{variants[0].nom}</div>
-                              <div className="text-xs md:text-sm text-gray-600">
-                                {variants[0].marque} • {variants.length} variantes
-                              </div>
-                            </div>
+                      }, {} as Record<string, Product[]>);
+                      
+                      if (Object.keys(groupedProducts).length === 0) {
+                        return (
+                          <div className="p-4 text-center text-gray-500">
+                            Aucun produit pour la marque "{selectedBrand}"
                           </div>
-                          
-                          <div className="flex gap-2 self-end md:self-auto mt-2 md:mt-0">
-                            <button
-                              onClick={() => handleAddVariant(variants[0])}
-                              className="px-2 py-1 md:px-3 md:py-1 bg-blue-500 text-white rounded text-sm hover:bg-blue-600"
-                              title="Ajouter une variante"
-                            >
-                              ➕ Variante
-                            </button>
-                          </div>
-                        </div>
-                        
-                        {/* Liste des variantes */}
-                        {variants.map((product) => (
-                          <div key={product.id} className="flex flex-col md:flex-row items-start md:items-center justify-between p-3 pl-8 border-t hover:bg-gray-50 gap-2">
+                        );
+                      }
+                      
+                      return Object.entries(groupedProducts).map(([variantId, variants]) => (
+                        <div key={variantId} className="border-b hover:bg-gray-50">
+                          {/* En-tête du groupe de variantes */}
+                          <div className="flex flex-col md:flex-row items-start md:items-center justify-between p-3 bg-gray-100">
                             <div className="flex items-center space-x-3 flex-1">
-                              <div className="w-10 h-10 bg-gray-100 rounded overflow-hidden flex-shrink-0">
-                                {product.image_url ? (
+                              <div className="w-12 h-12 bg-gray-100 rounded overflow-hidden flex-shrink-0">
+                                {variants[0].image_url ? (
                                   <img 
-                                    src={product.image_url} 
-                                    alt={product.nom}
+                                    src={variants[0].image_url} 
+                                    alt={variants[0].nom}
                                     className="w-full h-full object-cover"
                                   />
                                 ) : (
@@ -788,34 +821,72 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
                               </div>
                               
                               <div className="flex-1">
-                                <div className="font-medium text-sm md:text-base">
-                                  {product.quantite_reelle}ml/gr
-                                </div>
+                                <div className="font-medium text-sm md:text-base">{variants[0].nom}</div>
                                 <div className="text-xs md:text-sm text-gray-600">
-                                  Prix: {calculateRealPrice(product).toFixed(2)}€ • Stock: {product.stock_unite ?? 0} • {product.emplacement_stock}
+                                  {variants[0].marque} • {variants.length} variante{variants.length > 1 ? 's' : ''}
                                 </div>
                               </div>
                             </div>
-                            <div className="flex gap-2 self-end md:self-auto">
+                            
+                            <div className="flex gap-2 self-end md:self-auto mt-2 md:mt-0">
                               <button
-                                onClick={() => setEditingProduct(product)}
-                                className="px-2 py-1 md:px-3 md:py-1 bg-orange-500 text-white rounded text-sm hover:bg-orange-600"
-                                title="Modifier cette variante"
+                                onClick={() => handleAddVariant(variants[0])}
+                                className="px-2 py-1 md:px-3 md:py-1 bg-blue-500 text-white rounded text-sm hover:bg-blue-600"
+                                title="Ajouter une variante"
                               >
-                                ✏️
-                              </button>
-                              <button
-                                onClick={() => handleDeleteProduct(product.id)}
-                                className="px-2 py-1 md:px-3 md:py-1 bg-red-500 text-white rounded text-sm hover:bg-red-600"
-                                title="Supprimer cette variante"
-                              >
-                                🗑️
+                                ➕ Variante
                               </button>
                             </div>
                           </div>
-                        ))}
-                      </div>
-                    ))
+                          
+                          {/* Liste des variantes */}
+                          {variants.map((product) => (
+                            <div key={product.id} className="flex flex-col md:flex-row items-start md:items-center justify-between p-3 pl-8 border-t hover:bg-gray-50 gap-2">
+                              <div className="flex items-center space-x-3 flex-1">
+                                <div className="w-10 h-10 bg-gray-100 rounded overflow-hidden flex-shrink-0">
+                                  {product.image_url ? (
+                                    <img 
+                                      src={product.image_url} 
+                                      alt={product.nom}
+                                      className="w-full h-full object-cover"
+                                    />
+                                  ) : (
+                                    <div className="w-full h-full flex items-center justify-center text-gray-400 text-xs">
+                                      📷
+                                    </div>
+                                  )}
+                                </div>
+                                
+                                <div className="flex-1">
+                                  <div className="font-medium text-sm md:text-base">
+                                    {product.quantite_reelle}ml/gr
+                                  </div>
+                                  <div className="text-xs md:text-sm text-gray-600">
+                                    Prix: {calculateRealPrice(product).toFixed(2)}€ • Stock: {product.stock_unite ?? 0} • {product.emplacement_stock}
+                                  </div>
+                                </div>
+                              </div>
+                              <div className="flex gap-2 self-end md:self-auto">
+                                <button
+                                  onClick={() => setEditingProduct(product)}
+                                  className="px-2 py-1 md:px-3 md:py-1 bg-orange-500 text-white rounded text-sm hover:bg-orange-600"
+                                  title="Modifier cette variante"
+                                >
+                                  ✏️
+                                </button>
+                                <button
+                                  onClick={() => handleDeleteProduct(product.id)}
+                                  className="px-2 py-1 md:px-3 md:py-1 bg-red-500 text-white rounded text-sm hover:bg-red-600"
+                                  title="Supprimer cette variante"
+                                >
+                                  🗑️
+                                </button>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      ));
+                    })()
                   )}
                 </div>
               </div>

@@ -134,7 +134,6 @@ export const ProductService = {
         productToInsert.stock_unite = product.stock_unite;
       }
       
-      // Garder le champ emplacement_stock pour l'admin
       if (product.emplacement_stock !== undefined) {
         productToInsert.emplacement_stock = product.emplacement_stock;
       }
@@ -330,7 +329,8 @@ export const ProductService = {
           quantite_achat: item.quantite_achat,
           quantite_reelle: 0,
           image_url: item.image_url,
-          categorie: item.categorie
+          categorie: item.categorie,
+          prepared: order.prepared_items?.[item.product_id] || false
         }))
       })) || [];
 
@@ -419,7 +419,7 @@ export const ProductService = {
         variantId = similarProducts[0].variant_id || generateVariantId(productData.nom || '', productData.marque || '');
       } else {
         // Générer un nouveau variant_id
-        variantId = generateVariantId(productData.nom || '', productData.marque || '');
+        variantId = productData.variant_id || generateVariantId(productData.nom || '', productData.marque || '');
       }
       
       // Ajouter le variant_id au produit
