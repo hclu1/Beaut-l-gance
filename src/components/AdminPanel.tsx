@@ -27,11 +27,15 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
   const [variantBaseProduct, setVariantBaseProduct] = useState<Product | null>(null);
   const [similarProducts, setSimilarProducts] = useState<Product[]>([]);
   
-  // États pour le filtre de marque
-  const [selectedBrand, setSelectedBrand] = useState<string>('all');
-  
-  // Extraire toutes les marques uniques des produits
+  // États pour le filtre de marque + emplacement combiné
+  const [selectedBrandOrEmplacement, setSelectedBrandOrEmplacement] = useState('all');
+
   const allBrands = Array.from(new Set(products.map(p => p.marque).filter(Boolean))).sort();
+  const allEmplacements = Array.from(new Set(
+    products
+      .flatMap(p => Array.isArray(p.emplacement_stock) ? p.emplacement_stock : [p.emplacement_stock])
+      .filter(Boolean)
+  )).sort();
   
   const [newProduct, setNewProduct] = useState({
     nom: '',
@@ -139,7 +143,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
     }
   };
 
-  // NOUVELLE FONCTION pour vérifier les doublons
+  // NOUVELLE FONCTION pour vérifier les doublons - RECHERCHE PARTIELLE
   const checkForDuplicates = async () => {
     if (!newProduct.nom || !newProduct.marque) {
       alert('Veuillez entrer un nom et une marque pour vérifier les doublons');
@@ -147,32 +151,56 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
     }
 
     try {
-      const similarProducts = await ProductService.getSimilarProducts(newProduct.nom, newProduct.marque);
-      setSimilarProducts(similarProducts);
-      
-      if (similarProducts.length > 0) {
-        alert(`Produits similaires trouvés (${similarProducts.length}):\n` +
-          similarProducts.map(p => `- ${p.nom} (${p.quantite_reelle}ml/gr)`).join('\n') +
-          '\n\nVous pouvez ajouter une nouvelle variante à ce produit.');
+      // Recherche locale partielle (côté client) en attendant la mise à jour du service
+      const searchTerms = newProduct.nom.toLowerCase().split(' ').filter(word => word.length > 3);
+      const localSimilarProducts = products.filter(p => {
+        if (p.marque !== newProduct.marque) return false;
         
-        // Pré-remplir le formulaire pour ajouter une variante
-        setVariantBaseProduct(similarProducts[0]);
+        const productName = p.nom.toLowerCase();
+        // Correspondance si au moins 2 mots clés correspondent ou si 50% du nom correspond
+        const matchingWords = searchTerms.filter(term => productName.includes(term));
+        return matchingWords.length >= Math.min(2, searchTerms.length);
+      });
+
+      // Tentative de recherche serveur (si implémentée dans ProductService)
+      let serverSimilarProducts = [];
+      try {
+        serverSimilarProducts = await ProductService.getSimilarProducts(newProduct.nom, newProduct.marque);
+      } catch (error) {
+        console.log('Recherche serveur non disponible, utilisation de la recherche locale');
+      }
+
+      // Combiner les résultats (dédupliquer par ID)
+      const allSimilar = [...localSimilarProducts, ...serverSimilarProducts];
+      const uniqueSimilar = Array.from(new Map(allSimilar.map(p => [p.id, p])).values());
+      
+      setSimilarProducts(uniqueSimilar);
+      
+      if (uniqueSimilar.length > 0) {
+        const message = `🔍 Produits similaires trouvés (${uniqueSimilar.length}):\n\n` +
+          uniqueSimilar.map(p => `• ${p.nom} (${p.quantite_reelle}ml/gr) - Stock: ${p.stock_unite ?? 0}`).join('\n') +
+          '\n\n💡 Vous pouvez ajouter une nouvelle variante à l\'un de ces produits.';
+        
+        alert(message);
+        
+        // Pré-remplir le formulaire pour ajouter une variante au premier résultat
+        setVariantBaseProduct(uniqueSimilar[0]);
         setAddingVariant(true);
         
         setNewProduct({
-          ...similarProducts[0],
+          ...uniqueSimilar[0],
           quantite_reelle: 0,
           stock_unite: 0,
           id: 0, // Pour forcer la création d'un nouveau produit
         });
       } else {
-        alert('Aucun produit similaire trouvé. Vous pouvez ajouter un nouveau produit.');
+        alert('✅ Aucun produit similaire trouvé.\nVous pouvez ajouter ce nouveau produit en toute sécurité.');
         setAddingVariant(false);
         setVariantBaseProduct(null);
       }
     } catch (error) {
       console.error('Erreur lors de la vérification des doublons:', error);
-      alert('Erreur lors de la vérification des doublons');
+      alert('❌ Erreur lors de la vérification des doublons');
     }
   };
 
@@ -374,6 +402,44 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
     }
   };
 
+  // NOUVELLE FONCTION : Détecter les variantes non groupées
+  const detectUngroupedVariants = () => {
+    const ungroupedMap = new Map<string, Product[]>();
+    
+    products.forEach(product => {
+      const key = `${product.nom.trim()}-${product.marque.trim()}`;
+      if (!ungroupedMap.has(key)) {
+        ungroupedMap.set(key, []);
+      }
+      ungroupedMap.get(key)!.push(product);
+    });
+    
+    // Filtrer uniquement les produits qui ont plusieurs variantes mais pas de variant_id commun
+    const needsGrouping = Array.from(ungroupedMap.entries())
+      .filter(([key, prods]) => {
+        if (prods.length <= 1) return false;
+        // Vérifier s'ils n'ont pas tous le même variant_id
+        const variantIds = new Set(prods.map(p => p.variant_id).filter(Boolean));
+        return variantIds.size !== 1;
+      })
+      .map(([key, prods]) => ({ name: key.split('-')[0], brand: key.split('-')[1], products: prods }));
+    
+    if (needsGrouping.length === 0) {
+      alert('✅ Tous les produits sont correctement groupés !');
+      return;
+    }
+    
+    const message = `🔍 Détection de variantes non groupées:\n\n` +
+      needsGrouping.slice(0, 5).map(group => 
+        `• ${group.name} (${group.brand}) - ${group.products.length} variantes`
+      ).join('\n') +
+      (needsGrouping.length > 5 ? `\n... et ${needsGrouping.length - 5} autre(s)` : '') +
+      `\n\n💡 Ces produits ont le même nom et marque mais ne sont pas groupés.\nContactez le support pour regrouper automatiquement.`;
+    
+    alert(message);
+    console.log('Variantes à regrouper:', needsGrouping);
+  };
+
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-2 md:p-4">
       <div className="bg-white rounded-lg p-4 md:p-6 max-w-6xl max-h-[95vh] overflow-y-auto w-full">
@@ -385,6 +451,13 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
               className="px-3 py-2 md:px-4 md:py-2 bg-purple-500 text-white rounded hover:bg-purple-600 text-sm md:text-base"
             >
               📱 QR Code
+            </button>
+            <button
+              onClick={detectUngroupedVariants}
+              className="px-3 py-2 md:px-4 md:py-2 bg-yellow-500 text-white rounded hover:bg-yellow-600 text-sm md:text-base"
+              title="Détecter les variantes non groupées"
+            >
+              🔍 Variantes
             </button>
             <button
               onClick={handleReloadProducts}
@@ -756,25 +829,51 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
                 <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-4 gap-3">
                   <h3 className="text-lg font-semibold">
                     Produits actuels 
-                    {selectedBrand !== 'all' && ` - ${selectedBrand}`}
+                    {selectedBrandOrEmplacement !== 'all' && ` - ${selectedBrandOrEmplacement}`}
                   </h3>
                   
-                  {/* Filtre par marque */}
+                  {/* Filtre combiné par marque et emplacement */}
                   <select
-                    value={selectedBrand}
-                    onChange={(e) => setSelectedBrand(e.target.value)}
+                    value={selectedBrandOrEmplacement}
+                    onChange={(e) => setSelectedBrandOrEmplacement(e.target.value)}
                     className="px-3 py-2 border rounded text-sm bg-white w-full md:w-auto"
                   >
-                    <option value="all">📦 Toutes les marques ({products.length})</option>
-                    {allBrands.length > 0 && <option disabled>─────────────────</option>}
-                    {allBrands.map(brand => {
-                      const count = products.filter(p => p.marque === brand).length;
-                      return (
-                        <option key={brand} value={brand}>
-                          {brand} ({count})
-                        </option>
-                      );
-                    })}
+                    <option value="all">📦 Tous les produits ({products.length})</option>
+                    
+                    {/* Section Marques */}
+                    {allBrands.length > 0 && (
+                      <>
+                        <option disabled>─── 🏷️ MARQUES ───</option>
+                        {allBrands.map(brand => {
+                          const count = products.filter(p => p.marque === brand).length;
+                          return (
+                            <option key={`brand-${brand}`} value={brand}>
+                              {brand} ({count})
+                            </option>
+                          );
+                        })}
+                      </>
+                    )}
+                    
+                    {/* Section Emplacements */}
+                    {allEmplacements.length > 0 && (
+                      <>
+                        <option disabled>─── 📍 EMPLACEMENTS ───</option>
+                        {allEmplacements.map(emplacement => {
+                          const count = products.filter(p => {
+                            if (Array.isArray(p.emplacement_stock)) {
+                              return p.emplacement_stock.includes(emplacement);
+                            }
+                            return p.emplacement_stock === emplacement;
+                          }).length;
+                          return (
+                            <option key={`emplacement-${emplacement}`} value={emplacement}>
+                              📍 {emplacement} ({count})
+                            </option>
+                          );
+                        })}
+                      </>
+                    )}
                   </select>
                 </div>
                 
@@ -785,32 +884,56 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
                     </div>
                   ) : (
                     (() => {
-                      const filteredProducts = products.filter(p => selectedBrand === 'all' || p.marque === selectedBrand);
+                      const filteredProducts = products.filter(p => {
+                        if (selectedBrandOrEmplacement === 'all') return true;
+                        
+                        // Vérifier si c'est une marque
+                        if (p.marque === selectedBrandOrEmplacement) return true;
+                        
+                        // Vérifier si c'est un emplacement
+                        if (Array.isArray(p.emplacement_stock)) {
+                          return p.emplacement_stock.includes(selectedBrandOrEmplacement);
+                        }
+                        return p.emplacement_stock === selectedBrandOrEmplacement;
+                      });
+                      
+                      // GROUPER PAR NOM + MARQUE UNIQUEMENT (ignorer variant_id pour forcer le regroupement)
                       const groupedProducts = filteredProducts.reduce((acc, product) => {
-                        const key = product.variant_id || `product-${product.id}`;
-                        if (!acc[key]) acc[key] = [];
-                        acc[key].push(product);
+                        // Créer une clé unique basée UNIQUEMENT sur le nom et la marque
+                        // Normaliser en enlevant les espaces multiples et en mettant en minuscules
+                        const normalizedName = product.nom.trim().toLowerCase().replace(/\s+/g, ' ');
+                        const normalizedBrand = product.marque.trim().toLowerCase();
+                        const groupKey = `${normalizedName}|||${normalizedBrand}`;
+                        
+                        if (!acc[groupKey]) acc[groupKey] = [];
+                        acc[groupKey].push(product);
                         return acc;
                       }, {} as Record<string, Product[]>);
                       
                       if (Object.keys(groupedProducts).length === 0) {
                         return (
                           <div className="p-4 text-center text-gray-500">
-                            Aucun produit pour la marque "{selectedBrand}"
+                            Aucun produit pour le filtre "{selectedBrandOrEmplacement}"
                           </div>
                         );
                       }
                       
-                      return Object.entries(groupedProducts).map(([variantId, variants]) => (
-                        <div key={variantId} className="border-b hover:bg-gray-50">
-                          {/* En-tête du groupe de variantes */}
+                      return Object.entries(groupedProducts).map(([variantId, variants]) => {
+                        // Trier les variantes par quantité croissante
+                        const sortedVariants = [...variants].sort((a, b) => 
+                          (a.quantite_reelle || 0) - (b.quantite_reelle || 0)
+                        );
+                        
+                        return (
+                        <div key={variantId} className="border-b">
+                          {/* En-tête du groupe de variantes - NOM UNIQUE */}
                           <div className="flex flex-col md:flex-row items-start md:items-center justify-between p-3 bg-gray-100">
                             <div className="flex items-center space-x-3 flex-1">
                               <div className="w-12 h-12 bg-gray-100 rounded overflow-hidden flex-shrink-0">
-                                {variants[0].image_url ? (
+                                {sortedVariants[0].image_url ? (
                                   <img 
-                                    src={variants[0].image_url} 
-                                    alt={variants[0].nom}
+                                    src={sortedVariants[0].image_url} 
+                                    alt={sortedVariants[0].nom}
                                     className="w-full h-full object-cover"
                                   />
                                 ) : (
@@ -821,16 +944,16 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
                               </div>
                               
                               <div className="flex-1">
-                                <div className="font-medium text-sm md:text-base">{variants[0].nom}</div>
+                                <div className="font-medium text-sm md:text-base">{sortedVariants[0].nom}</div>
                                 <div className="text-xs md:text-sm text-gray-600">
-                                  {variants[0].marque} • {variants.length} variante{variants.length > 1 ? 's' : ''}
+                                  {sortedVariants[0].marque} • {sortedVariants.length} variante{sortedVariants.length > 1 ? 's' : ''}
                                 </div>
                               </div>
                             </div>
                             
                             <div className="flex gap-2 self-end md:self-auto mt-2 md:mt-0">
                               <button
-                                onClick={() => handleAddVariant(variants[0])}
+                                onClick={() => handleAddVariant(sortedVariants[0])}
                                 className="px-2 py-1 md:px-3 md:py-1 bg-blue-500 text-white rounded text-sm hover:bg-blue-600"
                                 title="Ajouter une variante"
                               >
@@ -839,8 +962,8 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
                             </div>
                           </div>
                           
-                          {/* Liste des variantes */}
-                          {variants.map((product) => (
+                          {/* Liste des variantes - SANS répéter le nom */}
+                          {sortedVariants.map((product) => (
                             <div key={product.id} className="flex flex-col md:flex-row items-start md:items-center justify-between p-3 pl-8 border-t hover:bg-gray-50 gap-2">
                               <div className="flex items-center space-x-3 flex-1">
                                 <div className="w-10 h-10 bg-gray-100 rounded overflow-hidden flex-shrink-0">
@@ -858,8 +981,8 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
                                 </div>
                                 
                                 <div className="flex-1">
-                                  <div className="font-medium text-sm md:text-base">
-                                    {product.quantite_reelle}ml/gr
+                                  <div className="font-medium text-sm md:text-base text-blue-600">
+                                    📦 {product.quantite_reelle}ml/gr
                                   </div>
                                   <div className="text-xs md:text-sm text-gray-600">
                                     Prix: {calculateRealPrice(product).toFixed(2)}€ • Stock: {product.stock_unite ?? 0} • {product.emplacement_stock}
@@ -885,7 +1008,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
                             </div>
                           ))}
                         </div>
-                      ));
+                      )});
                     })()
                   )}
                 </div>
