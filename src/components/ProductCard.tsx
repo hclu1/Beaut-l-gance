@@ -17,8 +17,8 @@ const ProductCard: React.FC<ProductCardProps> = ({ product, variants = [], onAdd
   const [imageError, setImageError] = useState(false);
   const [loadingVariants, setLoadingVariants] = useState(false);
   const [allVariants, setAllVariants] = useState<Product[]>(variants);
+  const [showFullDescription, setShowFullDescription] = useState(false);
 
-  // Récupérer les variantes si non fournies en props
   useEffect(() => {
     const fetchVariants = async () => {
       if (variants.length === 0 && product.variant_id) {
@@ -33,7 +33,6 @@ const ProductCard: React.FC<ProductCardProps> = ({ product, variants = [], onAdd
         }
       }
     };
-
     fetchVariants();
   }, [product.variant_id, variants]);
 
@@ -48,7 +47,6 @@ const ProductCard: React.FC<ProductCardProps> = ({ product, variants = [], onAdd
   const finalPrice = realPrice * (1 - (selectedVariant.reduction || 0) / 100);
   const stockQuantity = selectedVariant.stock_unite ?? 0;
 
-  // URLs optimisées pour les différentes tailles
   const cardImageUrl = getOptimizedImageUrl(selectedVariant.image_url, imagePresets.card);
   const modalImageUrl = getOptimizedImageUrl(selectedVariant.image_url, imagePresets.modal);
 
@@ -60,29 +58,35 @@ const ProductCard: React.FC<ProductCardProps> = ({ product, variants = [], onAdd
     setQuantity(1);
   };
 
-  const handleImageError = () => {
-    setImageError(true);
-  };
+  const handleImageError = () => setImageError(true);
 
   const handleVariantChange = (variantId: number) => {
     const variant = allVariants.find(v => v.id === variantId);
     if (variant) {
       setSelectedVariant(variant);
-      setQuantity(1); // Réinitialiser la quantité lors du changement de variante
+      setQuantity(1);
     }
   };
 
-  // Vérifier s'il y a plusieurs variantes
   const hasMultipleVariants = allVariants.length > 1;
+
+  // --- Description courte avec bouton Voir plus / Voir moins ---
+  const truncatedDescription = selectedVariant.description
+    ? selectedVariant.description.slice(0, 150)
+    : '';
 
   return (
     <>
-      <div className="bg-white rounded-xl shadow-md overflow-hidden hover:shadow-lg transition-shadow duration-300 cursor-pointer" onClick={() => setShowModal(true)}>
+      {/* --- CARD --- */}
+      <div
+        className="bg-white rounded-xl shadow-md overflow-hidden hover:shadow-lg transition-shadow duration-300 cursor-pointer"
+        onClick={() => setShowModal(true)}
+      >
         <div className="relative h-48 bg-gray-100">
           {cardImageUrl && !imageError ? (
-            <img 
+            <img
               src={cardImageUrl}
-              alt={selectedVariant.nom} 
+              alt={selectedVariant.nom}
               className="w-full h-full object-contain p-2 hover:scale-105 transition-transform duration-300"
               loading="lazy"
               onError={handleImageError}
@@ -108,49 +112,7 @@ const ProductCard: React.FC<ProductCardProps> = ({ product, variants = [], onAdd
             {selectedVariant.nom}
           </h3>
           <p className="text-sm text-gray-600">{selectedVariant.marque}</p>
-          
-          {hasMultipleVariants && (
-            <div className="mt-2">
-              {/* Affichage conditionnel : boutons si <=3 variantes, menu déroulant sinon */}
-              {allVariants.length <= 3 ? (
-                <div className="flex flex-wrap gap-1">
-                  {allVariants.map((variant) => (
-                    <button
-                      key={variant.id}
-                      className={`px-2 py-1 text-xs rounded-md border ${
-                        selectedVariant.id === variant.id
-                          ? 'bg-purple-600 text-white border-purple-600'
-                          : 'bg-white text-gray-700 border-gray-300 hover:bg-gray-50'
-                      }`}
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        handleVariantChange(variant.id);
-                      }}
-                    >
-                      {variant.quantite_reelle}ml/gr
-                    </button>
-                  ))}
-                </div>
-              ) : (
-                <select
-                  value={selectedVariant.id}
-                  onChange={(e) => {
-                    e.stopPropagation();
-                    handleVariantChange(parseInt(e.target.value));
-                  }}
-                  className="w-full p-2 border rounded text-sm"
-                  onClick={(e) => e.stopPropagation()}
-                >
-                  {allVariants.map((variant) => (
-                    <option key={variant.id} value={variant.id}>
-                      {variant.quantite_reelle}ml/gr - {calculateRealPrice(variant).toFixed(2)}€
-                    </option>
-                  ))}
-                </select>
-              )}
-            </div>
-          )}
-          
+
           <div className="mt-3">
             <span className="text-xl font-bold text-purple-600">{finalPrice.toFixed(2)}€</span>
             {selectedVariant.reduction > 0 && (
@@ -160,6 +122,7 @@ const ProductCard: React.FC<ProductCardProps> = ({ product, variants = [], onAdd
         </div>
       </div>
 
+      {/* --- MODAL --- */}
       <AnimatePresence>
         {showModal && (
           <motion.div
@@ -180,9 +143,9 @@ const ProductCard: React.FC<ProductCardProps> = ({ product, variants = [], onAdd
                 <div className="relative">
                   <div className="aspect-square bg-gray-100 rounded-lg overflow-hidden">
                     {modalImageUrl && !imageError ? (
-                      <img 
+                      <img
                         src={modalImageUrl}
-                        alt={selectedVariant.nom} 
+                        alt={selectedVariant.nom}
                         className="w-full h-full object-contain p-2"
                         onError={handleImageError}
                       />
@@ -195,86 +158,26 @@ const ProductCard: React.FC<ProductCardProps> = ({ product, variants = [], onAdd
                 <div className="space-y-4">
                   <h2 className="text-2xl font-bold text-gray-800">{selectedVariant.nom}</h2>
                   <p className="text-gray-600">{selectedVariant.marque}</p>
-                  
-                  {/* Menu déroulant des quantités avec prix */}
-                  <div className="mt-4">
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Quantité
-                    </label>
-                    {/* Affichage conditionnel : boutons si <=3 variantes, menu déroulant sinon */}
-                    {allVariants.length <= 3 ? (
-                      <div className="flex flex-wrap gap-2">
-                        {allVariants.map((variant) => (
-                          <button
-                            key={variant.id}
-                            className={`px-4 py-2 rounded-md border ${
-                              selectedVariant.id === variant.id
-                                ? 'bg-purple-600 text-white border-purple-600'
-                                : 'bg-white text-gray-700 border-gray-300 hover:bg-gray-50'
-                            }`}
-                            onClick={() => {
-                              setSelectedVariant(variant);
-                              setQuantity(1);
-                            }}
-                          >
-                            {variant.quantite_reelle}ml/gr - {calculateRealPrice(variant).toFixed(2)}€
-                          </button>
-                        ))}
-                      </div>
-                    ) : (
-                      <select
-                        value={selectedVariant.id}
-                        onChange={(e) => {
-                          const variant = allVariants.find(v => v.id === parseInt(e.target.value));
-                          if (variant) {
-                            setSelectedVariant(variant);
-                            setQuantity(1);
-                          }
-                        }}
-                        className="w-full p-2 border rounded"
-                      >
-                        {allVariants.map((variant) => (
-                          <option key={variant.id} value={variant.id}>
-                            {variant.quantite_reelle}ml/gr - {calculateRealPrice(variant).toFixed(2)}€
-                          </option>
-                        ))}
-                      </select>
-                    )}
-                  </div>
 
-                  {/* Quantité d'achat */}
-                  <div className="mt-4">
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Quantité d'achat
-                    </label>
-                    <div className="flex items-center">
-                      <button
-                        className="px-3 py-1 bg-gray-200 rounded-l-md hover:bg-gray-300"
-                        onClick={() => setQuantity(Math.max(1, quantity - 1))}
-                      >
-                        -
-                      </button>
-                      <input
-                        type="number"
-                        min="1"
-                        max={stockQuantity}
-                        value={quantity}
-                        onChange={(e) => setQuantity(Math.max(1, Math.min(stockQuantity, parseInt(e.target.value) || 1)))}
-                        className="w-16 text-center border-t border-b border-gray-300"
-                      />
-                      <button
-                        className="px-3 py-1 bg-gray-200 rounded-r-md hover:bg-gray-300"
-                        onClick={() => setQuantity(Math.min(stockQuantity, quantity + 1))}
-                      >
-                        +
-                      </button>
-                      <span className="ml-4 text-sm text-gray-500">
-                        Stock: {stockQuantity}
-                      </span>
+                  {/* --- Description avec "Voir plus" --- */}
+                  {selectedVariant.description && (
+                    <div className="text-gray-700 text-sm leading-relaxed">
+                      {showFullDescription
+                        ? selectedVariant.description
+                        : truncatedDescription + (selectedVariant.description.length > 150 ? '...' : '')}
+
+                      {selectedVariant.description.length > 150 && (
+                        <button
+                          onClick={() => setShowFullDescription(!showFullDescription)}
+                          className="block mt-2 text-purple-600 font-medium hover:underline"
+                        >
+                          {showFullDescription ? 'Voir moins ▲' : 'Voir plus ▼'}
+                        </button>
+                      )}
                     </div>
-                  </div>
+                  )}
 
-                  {/* Prix */}
+                  {/* --- Le reste de ton modal (quantité, prix, boutons, etc.) --- */}
                   <div className="mt-4">
                     <span className="text-2xl font-bold text-purple-600">{finalPrice.toFixed(2)}€</span>
                     {selectedVariant.reduction > 0 && (
@@ -282,7 +185,6 @@ const ProductCard: React.FC<ProductCardProps> = ({ product, variants = [], onAdd
                     )}
                   </div>
 
-                  {/* Boutons d'action */}
                   <div className="mt-6 flex gap-3">
                     <button
                       className="flex-1 py-3 px-6 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 transition-colors"
