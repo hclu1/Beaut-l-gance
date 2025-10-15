@@ -19,6 +19,7 @@ const ProductCard: React.FC<ProductCardProps> = ({ product, variants = [], onAdd
   const [allVariants, setAllVariants] = useState<Product[]>(variants);
   const [showFullDescription, setShowFullDescription] = useState(false);
 
+  // --- Charger les variantes (autres quantités du même produit) ---
   useEffect(() => {
     const fetchVariants = async () => {
       if (variants.length === 0 && product.variant_id) {
@@ -36,30 +37,18 @@ const ProductCard: React.FC<ProductCardProps> = ({ product, variants = [], onAdd
     fetchVariants();
   }, [product.variant_id, variants]);
 
-  const calculateRealPrice = (productToCalculate: Product) => {
-    if (productToCalculate.quantite_reference && productToCalculate.quantite_reference > 0) {
-      return (productToCalculate.prix_reference / productToCalculate.quantite_reference) * (productToCalculate.quantite_reelle || productToCalculate.quantite_reference);
-    }
-    return productToCalculate.prix_reference;
-  };
-
-  const realPrice = calculateRealPrice(selectedVariant);
-  const finalPrice = realPrice * (1 - (selectedVariant.reduction || 0) / 100);
+  // --- Prix réel et réduction ---
+  const basePrice = selectedVariant.prix_reference || 0;
+  const reduction = selectedVariant.reduction || 0;
+  const finalPrice = basePrice * (1 - reduction / 100);
   const stockQuantity = selectedVariant.stock_unite ?? 0;
 
+  // --- Gestion image ---
   const cardImageUrl = getOptimizedImageUrl(selectedVariant.image_url, imagePresets.card);
   const modalImageUrl = getOptimizedImageUrl(selectedVariant.image_url, imagePresets.modal);
-
-  const handleAddToCart = () => {
-    for (let i = 0; i < quantity; i++) {
-      onAddToCart(selectedVariant);
-    }
-    setShowModal(false);
-    setQuantity(1);
-  };
-
   const handleImageError = () => setImageError(true);
 
+  // --- Sélection de variante (quantité différente) ---
   const handleVariantChange = (variantId: number) => {
     const variant = allVariants.find(v => v.id === variantId);
     if (variant) {
@@ -74,6 +63,15 @@ const ProductCard: React.FC<ProductCardProps> = ({ product, variants = [], onAdd
   const truncatedDescription = selectedVariant.description
     ? selectedVariant.description.slice(0, 150)
     : '';
+
+  // --- Ajout au panier ---
+  const handleAddToCart = () => {
+    for (let i = 0; i < quantity; i++) {
+      onAddToCart(selectedVariant);
+    }
+    setShowModal(false);
+    setQuantity(1);
+  };
 
   return (
     <>
@@ -94,17 +92,18 @@ const ProductCard: React.FC<ProductCardProps> = ({ product, variants = [], onAdd
           ) : (
             <div className="w-full h-full flex items-center justify-center text-gray-400">📷</div>
           )}
-          {selectedVariant.reduction > 0 && (
+
+          {reduction > 0 && (
             <div className="absolute top-2 left-2 bg-red-500 text-white px-2 py-1 rounded-md text-sm font-bold">
-              -{selectedVariant.reduction}%
+              -{reduction}%
             </div>
           )}
+
           {hasMultipleVariants && (
             <div className="absolute top-2 right-2 bg-blue-500 text-white px-2 py-1 rounded-md text-sm font-bold">
               {allVariants.length} tailles
             </div>
           )}
-          <div className="absolute bottom-2 right-2 bg-black bg-opacity-50 text-white p-1 rounded-full">🔍</div>
         </div>
 
         <div className="p-4">
@@ -113,10 +112,13 @@ const ProductCard: React.FC<ProductCardProps> = ({ product, variants = [], onAdd
           </h3>
           <p className="text-sm text-gray-600">{selectedVariant.marque}</p>
 
-          <div className="mt-3">
+          <div className="mt-3 flex items-baseline gap-2">
             <span className="text-xl font-bold text-purple-600">{finalPrice.toFixed(2)}€</span>
-            {selectedVariant.reduction > 0 && (
-              <span className="text-sm text-gray-500 line-through ml-2">{realPrice.toFixed(2)}€</span>
+            {reduction > 0 && (
+              <span className="text-sm text-gray-500 line-through">{basePrice.toFixed(2)}€</span>
+            )}
+            {selectedVariant.quantite_reelle && (
+              <span className="text-sm text-gray-500">/ {selectedVariant.quantite_reelle}ml</span>
             )}
           </div>
         </div>
@@ -140,6 +142,7 @@ const ProductCard: React.FC<ProductCardProps> = ({ product, variants = [], onAdd
               onClick={(e) => e.stopPropagation()}
             >
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6 p-6">
+                {/* --- Image --- */}
                 <div className="relative">
                   <div className="aspect-square bg-gray-100 rounded-lg overflow-hidden">
                     {modalImageUrl && !imageError ? (
@@ -155,11 +158,30 @@ const ProductCard: React.FC<ProductCardProps> = ({ product, variants = [], onAdd
                   </div>
                 </div>
 
+                {/* --- Infos produit --- */}
                 <div className="space-y-4">
                   <h2 className="text-2xl font-bold text-gray-800">{selectedVariant.nom}</h2>
                   <p className="text-gray-600">{selectedVariant.marque}</p>
 
-                  {/* --- Description avec "Voir plus" --- */}
+                  {/* --- Sélecteur de variante --- */}
+                  {hasMultipleVariants && (
+                    <div>
+                      <label className="block text-sm text-gray-700 mb-1">Quantité :</label>
+                      <select
+                        value={selectedVariant.id}
+                        onChange={(e) => handleVariantChange(Number(e.target.value))}
+                        className="w-full border border-gray-300 rounded-lg p-2 focus:ring-2 focus:ring-purple-500"
+                      >
+                        {allVariants.map((v) => (
+                          <option key={v.id} value={v.id}>
+                            {v.quantite_reelle}ml - {v.prix_reference.toFixed(2)}€
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                  )}
+
+                  {/* --- Description --- */}
                   {selectedVariant.description && (
                     <div className="text-gray-700 text-sm leading-relaxed">
                       {showFullDescription
@@ -177,14 +199,18 @@ const ProductCard: React.FC<ProductCardProps> = ({ product, variants = [], onAdd
                     </div>
                   )}
 
-                  {/* --- Le reste de ton modal (quantité, prix, boutons, etc.) --- */}
-                  <div className="mt-4">
+                  {/* --- Prix --- */}
+                  <div className="mt-4 flex items-baseline gap-2">
                     <span className="text-2xl font-bold text-purple-600">{finalPrice.toFixed(2)}€</span>
-                    {selectedVariant.reduction > 0 && (
-                      <span className="text-sm text-gray-500 line-through ml-2">{realPrice.toFixed(2)}€</span>
+                    {reduction > 0 && (
+                      <span className="text-sm text-gray-500 line-through">{basePrice.toFixed(2)}€</span>
+                    )}
+                    {selectedVariant.quantite_reelle && (
+                      <span className="text-sm text-gray-500">pour {selectedVariant.quantite_reelle}ml</span>
                     )}
                   </div>
 
+                  {/* --- Boutons --- */}
                   <div className="mt-6 flex gap-3">
                     <button
                       className="flex-1 py-3 px-6 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 transition-colors"
