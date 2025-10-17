@@ -294,67 +294,65 @@ const { filteredProducts, groupedProducts } = useMemo(() => {
     return matchesCat && matchesSearch && hasStock;
   });
 
-  // 🚀 CORRECTION : Fonction pour extraire l'ID de base
-  const getBaseId = (variantId: string | undefined): string => {
-    if (!variantId) return '';
-    return variantId.replace(/-\d+ml$/, '');
-  };
+  // 🚀 CORRECTION COMPLÈTE : Regrouper par nom + marque + quantité_reelle
+  const uniqueProductsMap = new Map<string, Product>();
 
-  // Grouper par ID de base (sans la quantité)
-  const groups = filtered.reduce((acc, product) => {
-    const baseId = getBaseId(product.variant_id) || `${product.nom}-${product.marque}`;
+  filtered.forEach(product => {
+    // Clé unique basée sur nom, marque ET quantité réelle
+    const key = `${product.nom.toLowerCase()}-${product.marque.toLowerCase()}-${product.quantite_reelle || 0}ml`;
     
-    if (!acc[baseId]) {
-      acc[baseId] = [];
-    }
-    acc[baseId].push(product);
-    return acc;
-  }, {} as Record<string, Product[]>);
-
-  // 🚀 CORRECTION : Séparer vraies variantes et produits uniques
-  const realVariantGroups: Product[][] = [];
-  const uniqueProducts: Product[][] = [];
-
-  Object.values(groups).forEach(group => {
-    // Calculer les quantités uniques dans ce groupe
-    const uniqueQuantities = new Set(group.map(p => p.quantite_reelle));
-    
-    if (uniqueQuantities.size > 1) {
-      // Plus d'une quantité différente = vraies variantes
-      realVariantGroups.push(
-        group.sort((a, b) => (a.quantite_reelle || 0) - (b.quantite_reelle || 0))
-      );
+    if (uniqueProductsMap.has(key)) {
+      // Produit existe déjà, on additionne les stocks
+      const existing = uniqueProductsMap.get(key)!;
+      uniqueProductsMap.set(key, {
+        ...existing,
+        stock_unite: (existing.stock_unite || 0) + (product.stock_unite || 0)
+      });
     } else {
-      // Une seule quantité = produit unique (différents emplacements)
-      uniqueProducts.push(group);
+      // Nouveau produit unique
+      uniqueProductsMap.set(key, { ...product });
     }
   });
 
-  // Combiner les groupes
-  const allGroups = [
-    ...realVariantGroups,
-    ...uniqueProducts.map(group => {
-      if (group.length > 1) {
-        // Fusionner les stocks des différents emplacements
-        const mergedProduct = {
-          ...group[0],
-          stock_unite: group.reduce((sum, p) => sum + (p.stock_unite || 0), 0)
-        };
-        return [mergedProduct];
-      }
-      return group;
-    })
-  ];
+  // Convertir la Map en tableau de produits uniques
+  const uniqueProducts = Array.from(uniqueProductsMap.values());
 
-  console.log('📊 Regroupement:', {
-    total: filtered.length,
-    variantes: realVariantGroups.length,
-    uniques: uniqueProducts.length,
-    cartes: allGroups.length
+  // 🚀 Regrouper les VRAIES variantes (même nom/marque mais quantités différentes)
+  const variantGroups = new Map<string, Product[]>();
+
+  uniqueProducts.forEach(product => {
+    // Clé de base sans la quantité
+    const baseKey = `${product.nom.toLowerCase()}-${product.marque.toLowerCase()}`;
+    
+    if (!variantGroups.has(baseKey)) {
+      variantGroups.set(baseKey, []);
+    }
+    variantGroups.get(baseKey)!.push(product);
   });
 
-  return { filteredProducts: filtered, groupedProducts: allGroups };
+  // Filtrer pour ne garder que les groupes avec plusieurs quantités DIFFÉRENTES
+  const groupedProducts = Array.from(variantGroups.values())
+    .map(group => {
+      const uniqueQuantities = new Set(group.map(p => p.quantite_reelle));
+      
+      if (uniqueQuantities.size > 1) {
+        // Vraies variantes : trier par quantité
+        return group.sort((a, b) => (a.quantite_reelle || 0) - (b.quantite_reelle || 0));
+      } else {
+        // Produit unique : retourner comme tableau à 1 élément
+        return [group[0]];
+      }
+    });
+
+  console.log('📊 Résultat regroupement:', {
+    produits_filtrés: filtered.length,
+    produits_uniques: uniqueProducts.length,
+    cartes_affichées: groupedProducts.length
+  });
+
+  return { filteredProducts: filtered, groupedProducts };
 }, [products, selectedCat, searchTerm]);
+
 
 
   return (
