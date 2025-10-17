@@ -15,6 +15,7 @@ import FloatingCartIcon from './components/FloatingCartIcon';
 import CheckoutModal from './components/CheckoutModal';
 import AdminPanel from './components/AdminPanel';
 import { ProductService } from './services/productService';
+import { EmailService } from './services/emailService'; // 🚀 AJOUT
 
 const App: React.FC = () => {
   const [selectedCat, setSelectedCat] = useState<string | null>(null);
@@ -235,50 +236,54 @@ const App: React.FC = () => {
     }
   }, [cart, products, removeFromCart]);
 
-  const handleCheckout = useCallback(async (customerInfo: any) => {
-    const total = cart.reduce((sum, item) => {
-      const realPrice = calculateRealPrice(item);
-      const finalPrice = realPrice * (1 - (item.reduction ?? 0) / 100);
-      return sum + finalPrice * item.quantite_achat;
-    }, 0);
+ const handleCheckout = useCallback(async (customerInfo: any) => {
+  const total = cart.reduce((sum, item) => {
+    const realPrice = calculateRealPrice(item);
+    const finalPrice = realPrice * (1 - (item.reduction ?? 0) / 100);
+    return sum + finalPrice * item.quantite_achat;
+  }, 0);
 
-    const newOrder: Order = {
-      id: Date.now().toString(),
-      date: new Date().toLocaleDateString('fr-FR', {
-        year: 'numeric', month: 'long', day: 'numeric',
-        hour: '2-digit', minute: '2-digit'
-      }),
-      items: [...cart],
-      total,
-      status: 'pending',
-      paymentMode: 'espece',
-      customerInfo,
-      preparedItems: {}
-    };
+  const newOrder: Order = {
+    id: Date.now().toString(),
+    date: new Date().toLocaleDateString('fr-FR', {
+      year: 'numeric', month: 'long', day: 'numeric',
+      hour: '2-digit', minute: '2-digit'
+    }),
+    items: [...cart],
+    total,
+    status: 'pending',
+    paymentMode: 'espece',
+    customerInfo,
+    preparedItems: {}
+  };
 
-    try {
-      await ProductService.saveOrder(newOrder);
-      console.log('Commande sauvegardée dans Supabase');
-      
-      setOrders([newOrder, ...orders]);
-      setCart([]);
-      setShowCheckout(false);
+  try {
+    await ProductService.saveOrder(newOrder);
+    console.log('Commande sauvegardée dans Supabase');
+    
+    // 🚀 NOUVEAU : Envoyer l'email de notification
+EmailService.sendOrderNotification(newOrder);
 
-      const customerName = customerInfo.nom && customerInfo.prenom
-        ? `${customerInfo.prenom} ${customerInfo.nom}`
-        : customerInfo.nom || customerInfo.prenom || 'Client';
+    setOrders([newOrder, ...orders]);
+    setCart([]);
+    setShowCheckout(false);
 
-      alert(`Commande validée pour ${customerName}!\nNuméro: #${newOrder.id}\nSauvegardée dans Supabase.`);
-    } catch (error) {
-      console.error('Erreur sauvegarde commande:', error);
-      
-      setOrders([newOrder, ...orders]);
-      setCart([]);
-      setShowCheckout(false);
-      
-      alert(`Commande validée mais erreur de sauvegarde Supabase.\nCommande sauvegardée localement.`);
-    }
-  }, [cart, orders, calculateRealPrice]);
+    const customerName = customerInfo.nom && customerInfo.prenom
+      ? `${customerInfo.prenom} ${customerInfo.nom}`
+      : customerInfo.nom || customerInfo.prenom || 'Client';
+
+    alert(`Commande validée pour ${customerName}!\nNuméro: #${newOrder.id}\nSauvegardée dans Supabase.`);
+  } catch (error) {
+    console.error('Erreur sauvegarde commande:', error);
+    
+    setOrders([newOrder, ...orders]);
+    setCart([]);
+    setShowCheckout(false);
+    
+    alert(`Commande validée mais erreur de sauvegarde Supabase.\nCommande sauvegardée localement.`);
+  }
+}, [cart, orders, calculateRealPrice]);
+
 
   // 🚀 OPTIMISATION 6: Mémoriser le filtrage et le regroupement
 const { filteredProducts, groupedProducts } = useMemo(() => {
@@ -510,13 +515,14 @@ const { filteredProducts, groupedProducts } = useMemo(() => {
           </button>
         )}
 
-        {admin && (
-          <AdminPanel
-            products={products}
-            setProducts={setProducts}
-            orders={orders}
-            setOrders={setOrders}
-            onReloadProducts={reloadProductsFromSupabase}
+       {admin && (
+  <AdminPanel
+    products={products}
+    setProducts={setProducts}
+    orders={orders}
+    setOrders={setOrders}
+    onReloadProducts={reloadProductsFromSupabase}
+    setAdmin={setAdmin}
           />
         )}
 

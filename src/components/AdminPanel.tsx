@@ -8,6 +8,7 @@ interface AdminPanelProps {
   orders: Order[];
   setOrders: React.Dispatch<React.SetStateAction<Order[]>>;
   onReloadProducts?: () => void;
+  setAdmin: React.Dispatch<React.SetStateAction<boolean>>;
 }
 
 const AdminPanel: React.FC<AdminPanelProps> = ({ 
@@ -15,7 +16,8 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
   setProducts, 
   orders, 
   setOrders,
-  onReloadProducts 
+  onReloadProducts,
+  setAdmin
 }) => {
   const [editingProduct, setEditingProduct] = useState<Product | null>(null);
   const [uploadingImage, setUploadingImage] = useState(false);
@@ -460,20 +462,14 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
               🔍 Variantes
             </button>
             <button
-              onClick={handleReloadProducts}
-              className="px-3 py-2 md:px-4 md:py-2 bg-blue-500 text-white rounded hover:bg-blue-600 text-sm md:text-base"
-            >
-              Recharger
-            </button>
-            <button
-              onClick={() => {
-                setEditingProduct(null);
-                if (onReloadProducts) onReloadProducts();
-                window.dispatchEvent(new CustomEvent('closeAdmin'));
-              }}
-              className="px-3 py-2 md:px-4 md:py-2 bg-red-500 text-white rounded hover:bg-red-600 text-sm md:text-base"
-            >
-              Fermer
+             onClick={() => {
+    setEditingProduct(null);
+    setAdmin(false); // 🚀 CORRECTION : Fermer l'admin directement
+    if (onReloadProducts) onReloadProducts();
+  }}
+  className="px-3 py-2 md:px-4 md:py-2 bg-red-500 text-white rounded hover:bg-red-600 text-sm md:text-base"
+>
+  Fermer
             </button>
           </div>
         </div>

@@ -23,9 +23,23 @@ let productsCache: { data: Product[] | null; timestamp: number | null } = {
 
 const CACHE_DURATION = 5 * 60 * 1000; // 5 minutes
 
-// Générer un ID de variant unique
-const generateVariantId = (nom: string, marque: string): string => {
-  return `${nom.toLowerCase().replace(/\s+/g, '-')}-${marque.toLowerCase().replace(/\s+/g, '-')}`;
+// 🚀 CORRECTION: Générer un ID de variant basé sur nom + marque + quantité_réelle
+const generateVariantId = (nom: string, marque: string, quantiteReelle?: number): string => {
+  const baseName = nom.toLowerCase().replace(/\s+/g, '-');
+  const baseBrand = marque.toLowerCase().replace(/\s+/g, '-');
+  
+  // Si quantite_reelle est fournie, créer un ID unique pour cette quantité
+  if (quantiteReelle && quantiteReelle > 0) {
+    return `${baseName}-${baseBrand}-${quantiteReelle}ml`;
+  }
+  
+  // Sinon, ID de base sans quantité
+  return `${baseName}-${baseBrand}`;
+};
+
+// 🚀 NOUVELLE FONCTION: Extraire l'ID de base sans la quantité
+const getBaseVariantId = (variantId: string): string => {
+  return variantId.replace(/-\d+ml$/, '');
 };
 
 export const ProductService = {
@@ -437,23 +451,57 @@ export const ProductService = {
     }
   },
   
+  // 🚀 CORRECTION: Ajouter un produit avec gestion intelligente des variantes
   async addProductWithVariant(productData: Partial<Product>): Promise<Product> {
     try {
-      const similarProducts = await this.getSimilarProducts(productData.nom || '', productData.marque || '');
-      
+      console.log('🔍 Ajout produit avec détection variantes:', {
+        nom: productData.nom,
+        marque: productData.marque,
+        quantite_reelle: productData.quantite_reelle
+      });
+
+      // Chercher tous les produits avec même nom et marque
+      const allProducts = await this.getAllProducts();
+      const sameNameBrand = allProducts.filter(p =>
+        p.nom.toLowerCase() === productData.nom?.toLowerCase() &&
+        p.marque.toLowerCase() === productData.marque?.toLowerCase()
+      );
+
       let variantId: string;
-      
-      if (similarProducts.length > 0) {
-        variantId = similarProducts[0].variant_id || generateVariantId(productData.nom || '', productData.marque || '');
+
+      if (sameNameBrand.length > 0) {
+        // Il existe déjà des produits avec ce nom/marque
+        const sameQuantity = sameNameBrand.find(p => 
+          p.quantite_reelle === productData.quantite_reelle
+        );
+
+        if (sameQuantity) {
+          // 🚀 MÊME QUANTITÉ = MÊME PRODUIT (différent emplacement)
+          // Utiliser le même variant_id
+          variantId = sameQuantity.variant_id || 
+                     generateVariantId(productData.nom || '', productData.marque || '', productData.quantite_reelle);
+          
+          console.log('⚠️ Produit identique trouvé (même quantité) - Utilisation du même variant_id:', variantId);
+        } else {
+          // 🎯 QUANTITÉ DIFFÉRENTE = VRAIE VARIANTE
+          // Extraire l'ID de base et ajouter la nouvelle quantité
+          const baseId = getBaseVariantId(sameNameBrand[0].variant_id || 
+                                         generateVariantId(productData.nom || '', productData.marque || ''));
+          variantId = `${baseId}-${productData.quantite_reelle}ml`;
+          
+          console.log('✅ Nouvelle variante détectée (quantité différente) - Nouveau variant_id:', variantId);
+        }
       } else {
-        variantId = productData.variant_id || generateVariantId(productData.nom || '', productData.marque || '');
+        // Nouveau produit unique
+        variantId = generateVariantId(productData.nom || '', productData.marque || '', productData.quantite_reelle);
+        console.log('🆕 Nouveau produit unique - Génération variant_id:', variantId);
       }
-      
+
       const productWithVariant = {
         ...productData,
         variant_id: variantId
       };
-      
+
       return await this.addProduct(productWithVariant as Omit<Product, 'id'>);
     } catch (error) {
       console.error('Erreur lors de l\'ajout du produit avec variante:', error);
@@ -461,13 +509,16 @@ export const ProductService = {
     }
   },
 
-  async getSimilarProducts(nom: string, marque: string): Promise<Product[]> {
+  // 🚀 CORRECTION: Récupérer les produits similaires (même nom, marque ET quantité = MÊME produit)
+  async getSimilarProducts(nom: string, marque: string, quantiteReelle?: number): Promise<Product[]> {
     try {
       const allProducts = await this.getAllProducts();
       
       return allProducts.filter(product => 
         product.nom.toLowerCase() === nom.toLowerCase() && 
-        product.marque.toLowerCase() === marque.toLowerCase()
+        product.marque.toLowerCase() === marque.toLowerCase() &&
+        // 🚀 IMPORTANT: Si quantité fournie, filtrer aussi par quantité
+        (quantiteReelle === undefined || product.quantite_reelle === quantiteReelle)
       );
     } catch (error) {
       console.error('Erreur lors de la recherche de produits similaires:', error);
@@ -475,11 +526,32 @@ export const ProductService = {
     }
   },
 
+  // 🚀 CORRECTION: Récupérer uniquement les VRAIES variantes (quantités différentes)
   async getProductVariants(variantId: string): Promise<Product[]> {
     try {
       const allProducts = await this.getAllProducts();
       
-      return allProducts.filter(product => product.variant_id === variantId);
+      // Extraire l'ID de base du variant_id (retirer la quantité)
+      const baseId = getBaseVariantId(variantId);
+      
+      // Filtrer les produits qui ont le même ID de base
+      const variants = allProducts.filter(product => {
+        if (!product.variant_id) return false;
+        const productBaseId = getBaseVariantId(product.variant_id);
+        return productBaseId === baseId;
+      });
+
+      // 🚀 IMPORTANT: Ne retourner que s'il y a plusieurs quantités différentes
+      const uniqueQuantities = new Set(variants.map(v => v.quantite_reelle));
+      
+      if (uniqueQuantities.size <= 1) {
+        // Une seule quantité = pas de vraies variantes, retourner tableau vide
+        console.log('⚠️ Pas de vraies variantes (même quantité pour tous)', variantId);
+        return [];
+      }
+
+      console.log(`✅ ${variants.length} vraies variantes trouvées pour`, baseId);
+      return variants.sort((a, b) => (a.quantite_reelle || 0) - (b.quantite_reelle || 0));
     } catch (error) {
       console.error('Erreur lors de la récupération des variantes:', error);
       return [];
