@@ -281,33 +281,81 @@ const App: React.FC = () => {
   }, [cart, orders, calculateRealPrice]);
 
   // 🚀 OPTIMISATION 6: Mémoriser le filtrage et le regroupement
-  const { filteredProducts, groupedProducts } = useMemo(() => {
-    // Filtrage
-    const filtered = products.filter(product => {
-      const matchesCat = !selectedCat || product.categorie === selectedCat;
-      const matchesSearch = !searchTerm ||
-        product.nom.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        product.marque.toLowerCase().includes(searchTerm.toLowerCase());
-      
-      const hasStock = (product.stock_unite ?? 0) > 0;
-      
-      return matchesCat && matchesSearch && hasStock;
-    });
+const { filteredProducts, groupedProducts } = useMemo(() => {
+  // Filtrage
+  const filtered = products.filter(product => {
+    const matchesCat = !selectedCat || product.categorie === selectedCat;
+    const matchesSearch = !searchTerm ||
+      product.nom.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      product.marque.toLowerCase().includes(searchTerm.toLowerCase());
+    
+    const hasStock = (product.stock_unite ?? 0) > 0;
+    
+    return matchesCat && matchesSearch && hasStock;
+  });
 
-    // Regroupement par nom et marque
-    const grouped = Object.values(
-      filtered.reduce((acc, product) => {
-        const key = `${product.nom}-${product.marque}`;
-        if (!acc[key]) {
-          acc[key] = [];
-        }
-        acc[key].push(product);
-        return acc;
-      }, {} as Record<string, Product[]>)
-    );
+  // 🚀 CORRECTION : Fonction pour extraire l'ID de base
+  const getBaseId = (variantId: string | undefined): string => {
+    if (!variantId) return '';
+    return variantId.replace(/-\d+ml$/, '');
+  };
 
-    return { filteredProducts: filtered, groupedProducts: grouped };
-  }, [products, selectedCat, searchTerm]);
+  // Grouper par ID de base (sans la quantité)
+  const groups = filtered.reduce((acc, product) => {
+    const baseId = getBaseId(product.variant_id) || `${product.nom}-${product.marque}`;
+    
+    if (!acc[baseId]) {
+      acc[baseId] = [];
+    }
+    acc[baseId].push(product);
+    return acc;
+  }, {} as Record<string, Product[]>);
+
+  // 🚀 CORRECTION : Séparer vraies variantes et produits uniques
+  const realVariantGroups: Product[][] = [];
+  const uniqueProducts: Product[][] = [];
+
+  Object.values(groups).forEach(group => {
+    // Calculer les quantités uniques dans ce groupe
+    const uniqueQuantities = new Set(group.map(p => p.quantite_reelle));
+    
+    if (uniqueQuantities.size > 1) {
+      // Plus d'une quantité différente = vraies variantes
+      realVariantGroups.push(
+        group.sort((a, b) => (a.quantite_reelle || 0) - (b.quantite_reelle || 0))
+      );
+    } else {
+      // Une seule quantité = produit unique (différents emplacements)
+      uniqueProducts.push(group);
+    }
+  });
+
+  // Combiner les groupes
+  const allGroups = [
+    ...realVariantGroups,
+    ...uniqueProducts.map(group => {
+      if (group.length > 1) {
+        // Fusionner les stocks des différents emplacements
+        const mergedProduct = {
+          ...group[0],
+          stock_unite: group.reduce((sum, p) => sum + (p.stock_unite || 0), 0)
+        };
+        return [mergedProduct];
+      }
+      return group;
+    })
+  ];
+
+  console.log('📊 Regroupement:', {
+    total: filtered.length,
+    variantes: realVariantGroups.length,
+    uniques: uniqueProducts.length,
+    cartes: allGroups.length
+  });
+
+  return { filteredProducts: filtered, groupedProducts: allGroups };
+}, [products, selectedCat, searchTerm]);
+
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-pink-50 via-purple-50 to-pink-100 relative overflow-hidden">
