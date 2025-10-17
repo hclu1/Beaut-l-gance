@@ -37,8 +37,18 @@ const ProductCard: React.FC<ProductCardProps> = ({ product, variants = [], onAdd
     fetchVariants();
   }, [product.variant_id, variants]);
 
-  // --- Prix réel et réduction ---
-  const basePrice = selectedVariant.prix_reference || 0;
+  // --- FONCTION DE CALCUL DU PRIX RÉEL CORRIGÉE ---
+  const calculateRealPrice = (prod: Product) => {
+    // Si quantite_reference existe et est > 0, on calcule proportionnellement
+    if (prod.quantite_reference && prod.quantite_reference > 0 && prod.quantite_reelle) {
+      return (prod.prix_reference / prod.quantite_reference) * prod.quantite_reelle;
+    }
+    // Sinon on retourne le prix_reference directement
+    return prod.prix_reference || 0;
+  };
+
+  // --- CALCUL DU PRIX AVEC RÉDUCTION CORRIGÉ ---
+  const basePrice = calculateRealPrice(selectedVariant);
   const reduction = selectedVariant.reduction || 0;
   const finalPrice = basePrice * (1 - reduction / 100);
   const stockQuantity = selectedVariant.stock_unite ?? 0;
@@ -172,11 +182,18 @@ const ProductCard: React.FC<ProductCardProps> = ({ product, variants = [], onAdd
                         onChange={(e) => handleVariantChange(Number(e.target.value))}
                         className="w-full border border-gray-300 rounded-lg p-2 focus:ring-2 focus:ring-purple-500"
                       >
-                        {allVariants.map((v) => (
-                          <option key={v.id} value={v.id}>
-                            {v.quantite_reelle}ml - {v.prix_reference.toFixed(2)}€
-                          </option>
-                        ))}
+                        {allVariants.map((v) => {
+                          const variantBasePrice = calculateRealPrice(v);
+                          const variantReduction = v.reduction || 0;
+                          const variantFinalPrice = variantBasePrice * (1 - variantReduction / 100);
+                          
+                          return (
+                            <option key={v.id} value={v.id}>
+                              {v.quantite_reelle}ml - {variantFinalPrice.toFixed(2)}€
+                              {variantReduction > 0 && ` (-${variantReduction}%)`}
+                            </option>
+                          );
+                        })}
                       </select>
                     </div>
                   )}
