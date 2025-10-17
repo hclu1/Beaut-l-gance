@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Product } from '../types';
 import { getOptimizedImageUrl, imagePresets } from '../lib/imageUtils';
@@ -10,7 +10,8 @@ interface ProductCardProps {
   onAddToCart: (product: Product) => void;
 }
 
-const ProductCard: React.FC<ProductCardProps> = ({ product, variants = [], onAddToCart }) => {
+// 🚀 OPTIMISATION: Mémoriser le composant avec React.memo
+const ProductCard: React.FC<ProductCardProps> = React.memo(({ product, variants = [], onAddToCart }) => {
   const [showModal, setShowModal] = useState(false);
   const [quantity, setQuantity] = useState(1);
   const [selectedVariant, setSelectedVariant] = useState<Product>(product);
@@ -19,7 +20,6 @@ const ProductCard: React.FC<ProductCardProps> = ({ product, variants = [], onAdd
   const [allVariants, setAllVariants] = useState<Product[]>(variants);
   const [showFullDescription, setShowFullDescription] = useState(false);
 
-  // --- Charger les variantes (autres quantités du même produit) ---
   useEffect(() => {
     const fetchVariants = async () => {
       if (variants.length === 0 && product.variant_id) {
@@ -37,51 +37,62 @@ const ProductCard: React.FC<ProductCardProps> = ({ product, variants = [], onAdd
     fetchVariants();
   }, [product.variant_id, variants]);
 
-  // --- FONCTION DE CALCUL DU PRIX RÉEL CORRIGÉE ---
-  const calculateRealPrice = (prod: Product) => {
-    // Si quantite_reference existe et est > 0, on calcule proportionnellement
+  // 🚀 OPTIMISATION: Mémoriser la fonction de calcul de prix
+  const calculateRealPrice = useCallback((prod: Product) => {
     if (prod.quantite_reference && prod.quantite_reference > 0 && prod.quantite_reelle) {
       return (prod.prix_reference / prod.quantite_reference) * prod.quantite_reelle;
     }
-    // Sinon on retourne le prix_reference directement
     return prod.prix_reference || 0;
-  };
+  }, []);
 
-  // --- CALCUL DU PRIX AVEC RÉDUCTION CORRIGÉ ---
-  const basePrice = calculateRealPrice(selectedVariant);
-  const reduction = selectedVariant.reduction || 0;
-  const finalPrice = basePrice * (1 - reduction / 100);
-  const stockQuantity = selectedVariant.stock_unite ?? 0;
+  // 🚀 OPTIMISATION: Mémoriser les calculs de prix
+  const { basePrice, finalPrice, reduction, stockQuantity } = useMemo(() => {
+    const base = calculateRealPrice(selectedVariant);
+    const red = selectedVariant.reduction || 0;
+    const final = base * (1 - red / 100);
+    const stock = selectedVariant.stock_unite ?? 0;
+    
+    return {
+      basePrice: base,
+      finalPrice: final,
+      reduction: red,
+      stockQuantity: stock
+    };
+  }, [selectedVariant, calculateRealPrice]);
 
-  // --- Gestion image ---
-  const cardImageUrl = getOptimizedImageUrl(selectedVariant.image_url, imagePresets.card);
-  const modalImageUrl = getOptimizedImageUrl(selectedVariant.image_url, imagePresets.modal);
-  const handleImageError = () => setImageError(true);
+  // 🚀 OPTIMISATION: Mémoriser les URLs d'images
+  const { cardImageUrl, modalImageUrl } = useMemo(() => ({
+    cardImageUrl: getOptimizedImageUrl(selectedVariant.image_url, imagePresets.card),
+    modalImageUrl: getOptimizedImageUrl(selectedVariant.image_url, imagePresets.modal)
+  }), [selectedVariant.image_url]);
 
-  // --- Sélection de variante (quantité différente) ---
-  const handleVariantChange = (variantId: number) => {
+  const handleImageError = useCallback(() => setImageError(true), []);
+
+  // 🚀 OPTIMISATION: Mémoriser le handler de changement de variante
+  const handleVariantChange = useCallback((variantId: number) => {
     const variant = allVariants.find(v => v.id === variantId);
     if (variant) {
       setSelectedVariant(variant);
       setQuantity(1);
     }
-  };
+  }, [allVariants]);
 
   const hasMultipleVariants = allVariants.length > 1;
 
-  // --- Description courte avec bouton Voir plus / Voir moins ---
-  const truncatedDescription = selectedVariant.description
-    ? selectedVariant.description.slice(0, 150)
-    : '';
+  // 🚀 OPTIMISATION: Mémoriser la description tronquée
+  const truncatedDescription = useMemo(() => 
+    selectedVariant.description ? selectedVariant.description.slice(0, 150) : '',
+    [selectedVariant.description]
+  );
 
-  // --- Ajout au panier ---
-  const handleAddToCart = () => {
+  // 🚀 OPTIMISATION: Mémoriser le handler d'ajout au panier
+  const handleAddToCart = useCallback(() => {
     for (let i = 0; i < quantity; i++) {
       onAddToCart(selectedVariant);
     }
     setShowModal(false);
     setQuantity(1);
-  };
+  }, [quantity, selectedVariant, onAddToCart]);
 
   return (
     <>
@@ -97,6 +108,7 @@ const ProductCard: React.FC<ProductCardProps> = ({ product, variants = [], onAdd
               alt={selectedVariant.nom}
               className="w-full h-full object-contain p-2 hover:scale-105 transition-transform duration-300"
               loading="lazy"
+              decoding="async"
               onError={handleImageError}
             />
           ) : (
@@ -152,7 +164,6 @@ const ProductCard: React.FC<ProductCardProps> = ({ product, variants = [], onAdd
               onClick={(e) => e.stopPropagation()}
             >
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6 p-6">
-                {/* --- Image --- */}
                 <div className="relative">
                   <div className="aspect-square bg-gray-100 rounded-lg overflow-hidden">
                     {modalImageUrl && !imageError ? (
@@ -160,6 +171,7 @@ const ProductCard: React.FC<ProductCardProps> = ({ product, variants = [], onAdd
                         src={modalImageUrl}
                         alt={selectedVariant.nom}
                         className="w-full h-full object-contain p-2"
+                        loading="eager"
                         onError={handleImageError}
                       />
                     ) : (
@@ -168,12 +180,10 @@ const ProductCard: React.FC<ProductCardProps> = ({ product, variants = [], onAdd
                   </div>
                 </div>
 
-                {/* --- Infos produit --- */}
                 <div className="space-y-4">
                   <h2 className="text-2xl font-bold text-gray-800">{selectedVariant.nom}</h2>
                   <p className="text-gray-600">{selectedVariant.marque}</p>
 
-                  {/* --- Sélecteur de variante --- */}
                   {hasMultipleVariants && (
                     <div>
                       <label className="block text-sm text-gray-700 mb-1">Quantité :</label>
@@ -198,7 +208,6 @@ const ProductCard: React.FC<ProductCardProps> = ({ product, variants = [], onAdd
                     </div>
                   )}
 
-                  {/* --- Description --- */}
                   {selectedVariant.description && (
                     <div className="text-gray-700 text-sm leading-relaxed">
                       {showFullDescription
@@ -216,7 +225,6 @@ const ProductCard: React.FC<ProductCardProps> = ({ product, variants = [], onAdd
                     </div>
                   )}
 
-                  {/* --- Prix --- */}
                   <div className="mt-4 flex items-baseline gap-2">
                     <span className="text-2xl font-bold text-purple-600">{finalPrice.toFixed(2)}€</span>
                     {reduction > 0 && (
@@ -227,7 +235,6 @@ const ProductCard: React.FC<ProductCardProps> = ({ product, variants = [], onAdd
                     )}
                   </div>
 
-                  {/* --- Boutons --- */}
                   <div className="mt-6 flex gap-3">
                     <button
                       className="flex-1 py-3 px-6 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 transition-colors"
@@ -251,6 +258,16 @@ const ProductCard: React.FC<ProductCardProps> = ({ product, variants = [], onAdd
       </AnimatePresence>
     </>
   );
-};
+}, (prevProps, nextProps) => {
+  // 🚀 OPTIMISATION: Comparateur custom pour React.memo
+  return (
+    prevProps.product.id === nextProps.product.id &&
+    prevProps.product.stock_unite === nextProps.product.stock_unite &&
+    prevProps.product.reduction === nextProps.product.reduction &&
+    prevProps.variants.length === nextProps.variants.length
+  );
+});
+
+ProductCard.displayName = 'ProductCard';
 
 export default ProductCard;

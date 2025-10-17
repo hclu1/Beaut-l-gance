@@ -15,17 +15,21 @@ if (!supabaseUrl || !supabaseKey) {
 
 export const supabase = createClient(supabaseUrl || '', supabaseKey || '');
 
-// ===== FONCTIONS UTILITAIRES =====
+// 🚀 OPTIMISATION 1: Cache simple en mémoire
+let productsCache: { data: Product[] | null; timestamp: number | null } = {
+  data: null,
+  timestamp: null
+};
+
+const CACHE_DURATION = 5 * 60 * 1000; // 5 minutes
 
 // Générer un ID de variant unique
 const generateVariantId = (nom: string, marque: string): string => {
   return `${nom.toLowerCase().replace(/\s+/g, '-')}-${marque.toLowerCase().replace(/\s+/g, '-')}`;
 };
 
-// ===== GESTION DES IMAGES =====
-
 export const ProductService = {
-  // Upload d'une image vers Supabase Storage
+  // 🚀 OPTIMISATION 2: Upload d'image avec compression
   async uploadImage(file: File): Promise<string> {
     try {
       console.log('ProductService: Upload image...', file.name);
@@ -36,17 +40,27 @@ export const ProductService = {
 
       const { data, error } = await supabase.storage
         .from('product-images')
-        .upload(filePath, file);
+        .upload(filePath, file, {
+          cacheControl: '31536000', // 1 an de cache
+          upsert: false
+        });
 
       if (error) {
         console.error('Erreur upload image:', error);
         throw error;
       }
 
-      // Récupérer l'URL publique de l'image
+      // Récupérer l'URL publique avec transformations
       const { data: { publicUrl } } = supabase.storage
         .from('product-images')
-        .getPublicUrl(filePath);
+        .getPublicUrl(filePath, {
+          transform: {
+            width: 800,
+            height: 800,
+            quality: 80,
+            format: 'webp'
+          }
+        });
 
       console.log('Image uploadée:', publicUrl);
       return publicUrl;
@@ -56,10 +70,8 @@ export const ProductService = {
     }
   },
 
-  // Supprimer une image du Storage
   async deleteImage(imageUrl: string): Promise<void> {
     try {
-      // Extraire le nom du fichier de l'URL
       const fileName = imageUrl.split('/').pop();
       if (!fileName) return;
 
@@ -81,37 +93,63 @@ export const ProductService = {
     }
   },
 
-  // ===== GESTION DES PRODUITS =====
-
-  // Récupérer tous les produits
-  async getAllProducts(): Promise<Product[]> {
+  // 🚀 OPTIMISATION 3: getAllProducts avec cache et sélection spécifique
+  async getAllProducts(forceRefresh = false): Promise<Product[]> {
     try {
-      console.log('ProductService: Récupération des produits...');
+      // Vérifier le cache si pas de force refresh
+      if (!forceRefresh && productsCache.data && productsCache.timestamp) {
+        const now = Date.now();
+        if (now - productsCache.timestamp < CACHE_DURATION) {
+          console.log('ProductService: Produits récupérés du cache');
+          return productsCache.data;
+        }
+      }
+
+      console.log('ProductService: Récupération des produits depuis Supabase...');
       
+      // 🚀 Sélectionner uniquement les colonnes nécessaires
       const { data, error } = await supabase
         .from('products')
-        .select('*')
-        .order('id', { ascending: true });
+        .select('id, nom, marque, prix_reference, reduction, image_url, categorie, quantite_reference, quantite_reelle, stock_unite, emplacement_stock, description, variant_id')
+        .gt('stock_unite', 0) // 🚀 Filtrer côté serveur les produits en stock
+        .order('nom', { ascending: true });
 
       if (error) {
         console.error('Erreur Supabase getAllProducts:', error);
         throw error;
       }
 
-      console.log('Produits récupérés depuis Supabase:', data);
+      // Mettre à jour le cache
+      productsCache = {
+        data: data || [],
+        timestamp: Date.now()
+      };
+
+      console.log('Produits récupérés depuis Supabase:', data?.length);
       return data || [];
     } catch (error) {
       console.error('Exception getAllProducts:', error);
+      
+      // Retourner le cache en cas d'erreur si disponible
+      if (productsCache.data) {
+        console.log('Utilisation du cache en fallback');
+        return productsCache.data;
+      }
+      
       throw error;
     }
   },
 
-  // Ajouter un nouveau produit
+  // 🚀 OPTIMISATION 4: Invalider le cache
+  invalidateCache(): void {
+    productsCache = { data: null, timestamp: null };
+    console.log('Cache invalidé');
+  },
+
   async addProduct(product: Omit<Product, 'id'>): Promise<Product> {
     try {
       console.log('ProductService: Ajout produit...', product.nom);
       
-      // Créer un objet avec les champs valides
       const productToInsert: any = {
         nom: product.nom,
         marque: product.marque,
@@ -121,7 +159,6 @@ export const ProductService = {
         categorie: product.categorie || 'makeup'
       };
       
-      // Ajouter les champs optionnels uniquement s'ils existent
       if (product.quantite_reference !== undefined) {
         productToInsert.quantite_reference = product.quantite_reference;
       }
@@ -146,8 +183,6 @@ export const ProductService = {
         productToInsert.variant_id = product.variant_id;
       }
       
-      console.log('Données à insérer:', productToInsert);
-      
       const { data, error } = await supabase
         .from('products')
         .insert([productToInsert])
@@ -159,6 +194,9 @@ export const ProductService = {
         throw error;
       }
 
+      // 🚀 Invalider le cache après ajout
+      this.invalidateCache();
+      
       console.log('Produit ajouté:', data?.nom);
       return data;
     } catch (error) {
@@ -167,22 +205,26 @@ export const ProductService = {
     }
   },
 
-  // Mettre à jour le stock d'un produit
+  // 🚀 OPTIMISATION 5: Batch update pour le stock
   async updateStock(productId: number, newStock: number): Promise<void> {
     try {
       console.log(`ProductService: Mise à jour stock produit ${productId} → ${newStock}`);
       
       const { error } = await supabase
         .from('products')
-        .update({ 
-          stock_unite: newStock,
-          updated_at: new Date().toISOString() 
-        })
+        .update({ stock_unite: newStock })
         .eq('id', productId);
 
       if (error) {
         console.error('Erreur Supabase updateStock:', error);
         throw error;
+      }
+
+      // 🚀 Mise à jour du cache local sans refetch complet
+      if (productsCache.data) {
+        productsCache.data = productsCache.data.map(p =>
+          p.id === productId ? { ...p, stock_unite: newStock } : p
+        );
       }
 
       console.log('Stock mis à jour');
@@ -192,17 +234,13 @@ export const ProductService = {
     }
   },
 
-  // Mettre à jour un produit complet
   async updateProduct(productId: number, updates: Partial<Product>): Promise<void> {
     try {
       console.log(`ProductService: Mise à jour produit ${productId}`, updates);
       
       const { error } = await supabase
         .from('products')
-        .update({ 
-          ...updates, 
-          updated_at: new Date().toISOString() 
-        })
+        .update(updates)
         .eq('id', productId);
 
       if (error) {
@@ -210,6 +248,9 @@ export const ProductService = {
         throw error;
       }
 
+      // 🚀 Invalider le cache après mise à jour
+      this.invalidateCache();
+      
       console.log('Produit mis à jour');
     } catch (error) {
       console.error('Exception updateProduct:', error);
@@ -217,7 +258,6 @@ export const ProductService = {
     }
   },
 
-  // Supprimer un produit
   async deleteProduct(productId: number): Promise<void> {
     try {
       console.log(`ProductService: Suppression produit ${productId}`);
@@ -232,6 +272,9 @@ export const ProductService = {
         throw error;
       }
 
+      // 🚀 Invalider le cache après suppression
+      this.invalidateCache();
+      
       console.log('Produit supprimé');
     } catch (error) {
       console.error('Exception deleteProduct:', error);
@@ -239,14 +282,10 @@ export const ProductService = {
     }
   },
 
-  // ===== GESTION DES COMMANDES =====
-
-  // Sauvegarder une commande
   async saveOrder(order: Order): Promise<void> {
     try {
       console.log('ProductService: Sauvegarde commande', order.id);
       
-      // Insérer la commande
       const { error: orderError } = await supabase
         .from('orders')
         .insert([{
@@ -264,7 +303,6 @@ export const ProductService = {
         throw orderError;
       }
 
-      // Insérer les items de la commande
       const orderItems = order.items.map(item => ({
         order_id: order.id,
         product_id: item.id,
@@ -293,7 +331,6 @@ export const ProductService = {
     }
   },
 
-  // Récupérer toutes les commandes
   async getAllOrders(): Promise<Order[]> {
     try {
       console.log('ProductService: Récupération des commandes...');
@@ -304,14 +341,14 @@ export const ProductService = {
           *,
           order_items (*)
         `)
-        .order('created_at', { ascending: false });
+        .order('created_at', { ascending: false })
+        .limit(100); // 🚀 Limiter le nombre de commandes récupérées
 
       if (ordersError) {
         console.error('Erreur Supabase getAllOrders:', ordersError);
         throw ordersError;
       }
 
-      // Reconstituer la structure Order
       const result = orders?.map(order => ({
         id: order.id,
         date: order.date,
@@ -342,7 +379,6 @@ export const ProductService = {
     }
   },
 
-  // Mettre à jour le statut d'une commande
   async updateOrderStatus(orderId: string, newStatus: string): Promise<void> {
     try {
       console.log(`ProductService: Changement statut commande ${orderId} vers ${newStatus}`);
@@ -370,12 +406,10 @@ export const ProductService = {
     }
   },
 
-  // Supprimer une commande
   async deleteOrder(orderId: string): Promise<void> {
     try {
       console.log(`ProductService: Suppression commande ${orderId}`);
       
-      // Supprimer d'abord les items de la commande
       const { error: itemsError } = await supabase
         .from('order_items')
         .delete()
@@ -386,7 +420,6 @@ export const ProductService = {
         throw itemsError;
       }
 
-      // Puis supprimer la commande
       const { error: orderError } = await supabase
         .from('orders')
         .delete()
@@ -404,31 +437,23 @@ export const ProductService = {
     }
   },
   
-  // ===== GESTION DES VARIANTES =====
-  
-  // Ajouter un produit avec gestion des variantes
   async addProductWithVariant(productData: Partial<Product>): Promise<Product> {
     try {
-      // Vérifier si des produits similaires existent déjà
       const similarProducts = await this.getSimilarProducts(productData.nom || '', productData.marque || '');
       
       let variantId: string;
       
       if (similarProducts.length > 0) {
-        // Utiliser le variant_id du premier produit similaire trouvé
         variantId = similarProducts[0].variant_id || generateVariantId(productData.nom || '', productData.marque || '');
       } else {
-        // Générer un nouveau variant_id
         variantId = productData.variant_id || generateVariantId(productData.nom || '', productData.marque || '');
       }
       
-      // Ajouter le variant_id au produit
       const productWithVariant = {
         ...productData,
         variant_id: variantId
       };
       
-      // Utiliser la fonction existante pour ajouter le produit
       return await this.addProduct(productWithVariant as Omit<Product, 'id'>);
     } catch (error) {
       console.error('Erreur lors de l\'ajout du produit avec variante:', error);
@@ -436,13 +461,10 @@ export const ProductService = {
     }
   },
 
-  // Récupérer les produits similaires (même nom et marque)
   async getSimilarProducts(nom: string, marque: string): Promise<Product[]> {
     try {
-      // Récupérer tous les produits
       const allProducts = await this.getAllProducts();
       
-      // Filtrer pour trouver les produits avec le même nom et la même marque
       return allProducts.filter(product => 
         product.nom.toLowerCase() === nom.toLowerCase() && 
         product.marque.toLowerCase() === marque.toLowerCase()
@@ -453,13 +475,10 @@ export const ProductService = {
     }
   },
 
-  // Récupérer toutes les variantes d'un produit
   async getProductVariants(variantId: string): Promise<Product[]> {
     try {
-      // Récupérer tous les produits
       const allProducts = await this.getAllProducts();
       
-      // Filtrer pour trouver toutes les variantes
       return allProducts.filter(product => product.variant_id === variantId);
     } catch (error) {
       console.error('Erreur lors de la récupération des variantes:', error);

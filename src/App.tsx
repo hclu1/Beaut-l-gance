@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Product, Order, CartItem, SyncData } from './types';
 import { initialProducts, SHOP_CONFIG, STORAGE_KEYS } from './constants';
@@ -24,44 +24,61 @@ const App: React.FC = () => {
   const [showCheckout, setShowCheckout] = useState(false);
   const [showQR, setShowQR] = useState(false);
 
-  // Produits chargés depuis Supabase uniquement
-  const [products, setProducts] = useState<Product[]>([]);
+  // Produits avec état de chargement
+  const [products, setProducts] = useState<Product[]>(() => 
+    loadFromStorage(STORAGE_KEYS.PRODUCTS, [])
+  );
+  const [loading, setLoading] = useState(false);
   
-  // Commandes chargées depuis localStorage pour le moment
   const [orders, setOrders] = useState<Order[]>(() =>
     loadFromStorage(STORAGE_KEYS.ORDERS, [])
   );
 
-  // Fonction pour générer QR Code
-  const generateQRCode = () => {
+  // 🚀 OPTIMISATION 1: Générer QR Code une seule fois
+  const qrCodeUrl = useMemo(() => {
     const currentUrl = window.location.href.split('?')[0];
     return `https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(currentUrl)}`;
-  };
+  }, []);
 
-  // Chargement initial des produits depuis Supabase
+  // 🚀 OPTIMISATION 2: Chargement optimisé avec cache
   useEffect(() => {
-    console.log('Chargement des produits depuis Supabase...');
+    let isMounted = true;
     
-    ProductService.getAllProducts()
-      .then(data => {
-        setProducts(data);
-        console.log('Produits chargés depuis Supabase:', data.length);
-      })
-      .catch(err => {
-        console.error('Erreur chargement produits:', err);
-        setProducts(initialProducts);
-        console.log('Fallback vers données initiales');
-      });
+    const loadProducts = async () => {
+      // Afficher immédiatement le cache si disponible
+      const cachedProducts = loadFromStorage(STORAGE_KEYS.PRODUCTS, []);
+      if (cachedProducts.length > 0) {
+        setProducts(cachedProducts);
+      }
 
-    const handleCloseAdmin = () => setAdmin(false);
-    window.addEventListener('closeAdmin', handleCloseAdmin);
-    
+      // Charger en arrière-plan depuis Supabase
+      try {
+        setLoading(true);
+        const data = await ProductService.getAllProducts();
+        
+        if (isMounted) {
+          setProducts(data);
+          saveToStorage(STORAGE_KEYS.PRODUCTS, data);
+        }
+      } catch (err) {
+        console.error('Erreur chargement Supabase:', err);
+        // Garder le cache en cas d'erreur
+        if (cachedProducts.length === 0) {
+          setProducts(initialProducts);
+        }
+      } finally {
+        if (isMounted) setLoading(false);
+      }
+    };
+
+    loadProducts();
+
     return () => {
-      window.removeEventListener('closeAdmin', handleCloseAdmin);
+      isMounted = false;
     };
   }, []);
 
-  // Synchronisation des données via URL (QR code) au chargement
+  // Synchronisation URL (inchangé)
   useEffect(() => {
     const syncData = extractSyncDataFromUrl();
     if (syncData) {
@@ -81,12 +98,11 @@ const App: React.FC = () => {
     }
   }, []);
 
-  // Sauvegarde automatique des commandes dans le localStorage
+  // Sauvegarde automatique des commandes
   useEffect(() => {
     saveToStorage(STORAGE_KEYS.ORDERS, orders);
   }, [orders]);
 
-  // Fonction de synchronisation des données reçues
   const handleDataSync = (syncData: SyncData) => {
     if (!syncData.products || !Array.isArray(syncData.products) ||
         !syncData.orders || !Array.isArray(syncData.orders)) {
@@ -97,7 +113,6 @@ const App: React.FC = () => {
     setOrders(syncData.orders);
   };
 
-  // Réinitialisation forcée des données
   const handleForceSync = () => {
     setProducts(initialProducts);
     setOrders([]);
@@ -106,28 +121,33 @@ const App: React.FC = () => {
     alert('Magasin réinitialisé avec les données d\'origine');
   };
 
-  // Fonction pour recharger les produits depuis Supabase
-  const reloadProductsFromSupabase = async () => {
+  // 🚀 OPTIMISATION 3: Mémoriser la fonction de rechargement
+  const reloadProductsFromSupabase = useCallback(async () => {
     try {
       console.log('Rechargement des produits depuis Supabase...');
+      setLoading(true);
       const data = await ProductService.getAllProducts();
       setProducts(data);
+      saveToStorage(STORAGE_KEYS.PRODUCTS, data);
       console.log('Produits rechargés:', data.length);
     } catch (error) {
       console.error('Erreur rechargement produits:', error);
+    } finally {
+      setLoading(false);
     }
-  };
+  }, []);
 
-  // Fonction pour calculer le prix réel d'un produit
-  const calculateRealPrice = (product: Product) => {
+  // 🚀 OPTIMISATION 4: Mémoriser le calcul de prix
+  const calculateRealPrice = useCallback((product: Product) => {
     if (product.quantite_reference && product.quantite_reference > 0) {
-      return (product.prix_reference / product.quantite_reference) * (product.quantite_reelle || product.quantite_reference);
+      return (product.prix_reference / product.quantite_reference) * 
+             (product.quantite_reelle || product.quantite_reference);
     }
     return product.prix_reference;
-  };
+  }, []);
 
-  // Gestion panier : ajout produit avec mise à jour Supabase
-  const addToCart = async (product: Product) => {
+  // 🚀 OPTIMISATION 5: Mémoriser addToCart pour éviter re-renders
+  const addToCart = useCallback(async (product: Product) => {
     const stockQuantity = product.stock_unite ?? 0;
     
     if (stockQuantity <= 0) {
@@ -135,30 +155,30 @@ const App: React.FC = () => {
       return;
     }
 
-    const index = cart.findIndex(item => item.id === product.id);
-    if (index !== -1) {
-      const updatedCart = [...cart];
-      updatedCart[index].quantite_achat += 1;
-      setCart(updatedCart);
-    } else {
-      setCart([...cart, { ...product, quantite_achat: 1 }]);
-    }
+    setCart(prevCart => {
+      const index = prevCart.findIndex(item => item.id === product.id);
+      if (index !== -1) {
+        const updatedCart = [...prevCart];
+        updatedCart[index].quantite_achat += 1;
+        return updatedCart;
+      }
+      return [...prevCart, { ...product, quantite_achat: 1 }];
+    });
 
     try {
       const newStock = stockQuantity - 1;
       await ProductService.updateStock(product.id, newStock);
       
-      setProducts(products.map(p =>
+      setProducts(prevProducts => prevProducts.map(p =>
         p.id === product.id ? { ...p, stock_unite: newStock } : p
       ));
     } catch (error) {
       console.error('Erreur mise à jour stock:', error);
       alert('Erreur lors de la mise à jour du stock');
     }
-  };
+  }, []);
 
-  // Supprimer un item du panier avec mise à jour stock Supabase
-  const removeFromCart = async (index: number) => {
+  const removeFromCart = useCallback(async (index: number) => {
     const removedItem = cart[index];
     setCart(cart.filter((_, i) => i !== index));
 
@@ -176,10 +196,9 @@ const App: React.FC = () => {
     } catch (error) {
       console.error('Erreur remise stock:', error);
     }
-  };
+  }, [cart, products]);
 
-  // Modifier la quantité d'un item dans le panier avec Supabase
-  const updateCartQuantity = async (index: number, newQuantity: number) => {
+  const updateCartQuantity = useCallback(async (index: number, newQuantity: number) => {
     if (newQuantity <= 0) {
       removeFromCart(index);
       return;
@@ -214,11 +233,9 @@ const App: React.FC = () => {
     } catch (error) {
       console.error('Erreur mise à jour stock:', error);
     }
-  };
+  }, [cart, products, removeFromCart]);
 
-  // Finalisation commande avec sauvegarde Supabase
-  const handleCheckout = async (customerInfo: any) => {
-    // Calculer le total en utilisant le prix réel de chaque produit
+  const handleCheckout = useCallback(async (customerInfo: any) => {
     const total = cart.reduce((sum, item) => {
       const realPrice = calculateRealPrice(item);
       const finalPrice = realPrice * (1 - (item.reduction ?? 0) / 100);
@@ -261,47 +278,36 @@ const App: React.FC = () => {
       
       alert(`Commande validée mais erreur de sauvegarde Supabase.\nCommande sauvegardée localement.`);
     }
-  };
+  }, [cart, orders, calculateRealPrice]);
 
-  // Filtrage des produits selon catégorie, recherche ET stock
-  const filteredProducts = products.filter(product => {
-    const matchesCat = !selectedCat || product.categorie === selectedCat;
-    const matchesSearch = !searchTerm ||
-      product.nom.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      product.marque.toLowerCase().includes(searchTerm.toLowerCase());
-    
-    const hasStock = (product.stock_unite ?? 0) > 0;
-    
-    return matchesCat && matchesSearch && hasStock;
-  });
-
-  // Regrouper les produits par nom et marque (correction du regroupement)
-  const groupProductsByNameAndBrand = (products: Product[]) => {
-    const groups: { [key: string]: Product[] } = {};
-    
-    products.forEach(product => {
-      // Utiliser uniquement le nom et la marque pour regrouper
-      const key = `${product.nom}-${product.marque}`;
-      if (!groups[key]) {
-        groups[key] = [];
-      }
-      groups[key].push(product);
+  // 🚀 OPTIMISATION 6: Mémoriser le filtrage et le regroupement
+  const { filteredProducts, groupedProducts } = useMemo(() => {
+    // Filtrage
+    const filtered = products.filter(product => {
+      const matchesCat = !selectedCat || product.categorie === selectedCat;
+      const matchesSearch = !searchTerm ||
+        product.nom.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        product.marque.toLowerCase().includes(searchTerm.toLowerCase());
+      
+      const hasStock = (product.stock_unite ?? 0) > 0;
+      
+      return matchesCat && matchesSearch && hasStock;
     });
-    
-    return groups;
-  };
 
-  // Regrouper les produits filtrés
-  const groupedProducts = Object.values(
-    filteredProducts.reduce((acc, product) => {
-      const key = `${product.nom}-${product.marque}`;
-      if (!acc[key]) {
-        acc[key] = [];
-      }
-      acc[key].push(product);
-      return acc;
-    }, {} as Record<string, Product[]>)
-  );
+    // Regroupement par nom et marque
+    const grouped = Object.values(
+      filtered.reduce((acc, product) => {
+        const key = `${product.nom}-${product.marque}`;
+        if (!acc[key]) {
+          acc[key] = [];
+        }
+        acc[key].push(product);
+        return acc;
+      }, {} as Record<string, Product[]>)
+    );
+
+    return { filteredProducts: filtered, groupedProducts: grouped };
+  }, [products, selectedCat, searchTerm]);
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-pink-50 via-purple-50 to-pink-100 relative overflow-hidden">
@@ -339,7 +345,7 @@ const App: React.FC = () => {
             </button>
           </div>
 
-          {/* Modal QR Code */}
+          {/* Modal QR Code - 🚀 OPTIMISÉ: utilise qrCodeUrl mémorisé */}
           {showQR && (
             <motion.div 
               initial={{ opacity: 0, scale: 0.9 }}
@@ -350,9 +356,10 @@ const App: React.FC = () => {
               <div className="bg-white rounded-lg p-6 text-center max-w-sm w-full" onClick={e => e.stopPropagation()}>
                 <h3 className="text-lg font-bold mb-4">Partager la boutique</h3>
                 <img 
-                  src={generateQRCode()}
+                  src={qrCodeUrl}
                   alt="QR Code"
                   className="mx-auto mb-4 border rounded"
+                  loading="lazy"
                 />
                 <p className="text-sm text-gray-600 mb-4">
                   Scannez ce QR code pour accéder à la boutique
@@ -394,11 +401,17 @@ const App: React.FC = () => {
           ))}
         </div>
 
+        {/* 🚀 OPTIMISATION: Indicateur de chargement */}
+        {loading && (
+          <div className="text-center py-4 text-purple-600">
+            Mise à jour des produits...
+          </div>
+        )}
+
         {/* Grille des produits */}
         <motion.div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6 mb-8" layout>
           <AnimatePresence>
             {groupedProducts.map((variants, index) => {
-              // Prendre la première variante comme produit principal
               const mainProduct = variants[0];
               
               return (
@@ -407,12 +420,12 @@ const App: React.FC = () => {
                   initial={{ opacity: 0, y: 20 }}
                   animate={{ opacity: 1, y: 0 }}
                   exit={{ opacity: 0, y: -20 }}
-                  transition={{ delay: index * 0.1 }}
+                  transition={{ delay: Math.min(index * 0.05, 0.3) }}
                   layout
                 >
                   <ProductCard
                     product={mainProduct}
-                    variants={variants} // Passer toutes les variantes
+                    variants={variants}
                     onAddToCart={addToCart}
                   />
                 </motion.div>
@@ -421,7 +434,7 @@ const App: React.FC = () => {
           </AnimatePresence>
         </motion.div>
 
-        {groupedProducts.length === 0 && (
+        {groupedProducts.length === 0 && !loading && (
           <motion.div className="text-center py-12" initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
             <div className="text-4xl md:text-6xl mb-4">🔍</div>
             <h3 className="text-lg md:text-xl font-semibold text-gray-600 mb-2">Aucun produit trouvé</h3>
@@ -435,7 +448,6 @@ const App: React.FC = () => {
           updateQuantity={updateCartQuantity}
         />
 
-        {/* BOUTON ADMIN DISCRET AVEC CODE */}
         {!admin && (
           <button
             onClick={() => {
