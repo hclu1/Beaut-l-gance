@@ -176,50 +176,52 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
     }
   };
 
-  const handleAddProduct = async () => {
-    if (!newProduct.nom || !newProduct.marque) {
-      alert('Nom et marque requis');
-      return;
+const handleAddProduct = async () => {
+  if (!newProduct.nom || !newProduct.marque) {
+    alert('Nom et marque requis');
+    return;
+  }
+
+  const duplicatesConfirmed = await checkForDuplicates();
+  if (!duplicatesConfirmed) return;
+
+  try {
+    const productToAdd = {
+      ...newProduct,
+      image_url: previewImageUrl || newProduct.image_url, // 🚀 UTILISER previewImageUrl en priorité
+      id: Date.now().toString()
+    };
+
+    await ProductService.addProduct(productToAdd);
+    console.log('Produit ajouté dans Supabase');
+
+    if (onReloadProducts) {
+      await onReloadProducts();
     }
 
-    const duplicatesConfirmed = await checkForDuplicates();
-    if (!duplicatesConfirmed) return;
+    setNewProduct({
+      nom: '',
+      marque: '',
+      prix_reference: 0,
+      reduction: 0,
+      image_url: '',
+      categorie: 'makeup',
+      quantite_reference: 100,
+      quantite_reelle: 100,
+      stock_unite: 0,
+      emplacement_stock: '',
+      description: ''
+    });
+    
+    setPreviewImageUrl(''); // 🚀 Réinitialiser le preview
 
-    try {
-      const productToAdd = {
-        ...newProduct,
-        id: Date.now().toString()
-      };
+    alert('Produit ajouté avec succès !');
+  } catch (error) {
+    console.error('Erreur ajout produit:', error);
+    alert('Erreur lors de l\'ajout du produit dans Supabase');
+  }
+};
 
-      await ProductService.addProduct(productToAdd);
-      console.log('Produit ajouté dans Supabase');
-
-      if (onReloadProducts) {
-        await onReloadProducts();
-      }
-
-      setNewProduct({
-        nom: '',
-        marque: '',
-        prix_reference: 0,
-        reduction: 0,
-        image_url: '',
-        categorie: 'makeup',
-        quantite_reference: 100,
-        quantite_reelle: 100,
-        stock_unite: 0,
-        emplacement_stock: '',
-        description: ''
-      });
-      
-      setPreviewImageUrl(''); // ✅ Réinitialiser le preview
-
-      alert('Produit ajouté avec succès !');
-    } catch (error) {
-      console.error('Erreur ajout produit:', error);
-      alert('Erreur lors de l\'ajout du produit dans Supabase');
-    }
-  };
 
   const handleUpdateProduct = async () => {
     if (!editingProduct) return;
