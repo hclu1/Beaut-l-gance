@@ -31,24 +31,45 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
   const [similarProducts, setSimilarProducts] = useState<Product[]>([]);
 
   // États pour le filtre de marque/emplacement combiné
-  const [selectedBrandOrEmplacement, setSelectedBrandOrEmplacement] = useState<string>('all');
+ const [selectedBrandOrEmplacement, setSelectedBrandOrEmplacement] = useState<string>('all');
 
-  const allBrands = Array.from(new Set(products.map(p => p.marque))).sort();
-  const allEmplacements = Array.from(new Set(products.map(p => p.emplacement_stock).filter(e => e))).sort();
+const allBrands = Array.from(new Set(products.map(p => p.marque))).sort();
+const allEmplacements = Array.from(new Set(products.map(p => p.emplacement_stock).filter(e => e))).sort();
 
-  const [newProduct, setNewProduct] = useState({
-    nom: '',
-    marque: '',
-    prix_reference: 0,
-    reduction: 0,
-    image_url: '',
-    categorie: 'makeup' as const,
-    quantite_reference: 100,
-    quantite_reelle: 100,
-    stock_unite: 0,
-    emplacement_stock: '',
-    description: ''
-  });
+const [newProduct, setNewProduct] = useState({
+  nom: '',
+  marque: '',
+  prix_reference: 0,  
+  image_url: '',
+  categorie: 'makeup' as const,
+  quantite_reference: 100,
+  quantite_reelle: 100,
+  stock_unite: 0,
+  emplacement_stock: '',
+  reduction: 50, // ✅ 50% par défaut
+  description: ''
+});
+
+// 🚀 AJOUTEZ ICI LA FONCTION DE CALCUL DU PRIX RÉEL
+const calculateRealPrice = (
+  prixReference: number,
+  quantiteReference: number,
+  quantiteReelle: number,
+  reduction: number
+): number => {
+  if (!quantiteReference || quantiteReference === 0) return 0;
+  
+  // Prix au ml = prix_reference / quantite_reference
+  const prixParMl = prixReference / quantiteReference;
+  
+  // Prix brut = prix au ml × quantité réelle
+  const prixBrut = prixParMl * quantiteReelle;
+  
+  // Appliquer la réduction
+  const prixFinal = prixBrut * (1 - reduction / 100);
+  
+  return parseFloat(prixFinal.toFixed(2));
+};
 
   const currentProduct = editingProduct || newProduct;
 
@@ -200,18 +221,19 @@ const handleAddProduct = async () => {
     }
 
     setNewProduct({
-      nom: '',
-      marque: '',
-      prix_reference: 0,
-      reduction: 0,
-      image_url: '',
-      categorie: 'makeup',
-      quantite_reference: 100,
-      quantite_reelle: 100,
-      stock_unite: 0,
-      emplacement_stock: '',
-      description: ''
-    });
+  nom: '',
+  marque: '',
+  prix_reference: 0,  
+  image_url: '',
+  categorie: 'makeup',
+  quantite_reference: 100,
+  quantite_reelle: 100,
+  stock_unite: 0,
+  emplacement_stock: '',
+  reduction: 50, // ✅ Réinitialiser à 50%
+  description: ''
+});
+
     
     setPreviewImageUrl(''); // 🚀 Réinitialiser le preview
 
@@ -521,14 +543,14 @@ const handleCreateVariantGroup = async (selectedProducts: Product[]) => {
   </div>
 </div>
 
-                  {/* Champs du formulaire */}
+                      {/* Champs du formulaire */}
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div>
                       <label className="block text-sm font-medium text-gray-700">Nom</label>
                       <input
                         type="text"
                         placeholder="Nom du produit"
-                        value={currentProduct.nom}
+                        value={editingProduct?.nom ?? newProduct.nom}
                         onChange={(e) => {
                           if (editingProduct) {
                             setEditingProduct({...editingProduct, nom: e.target.value});
@@ -540,21 +562,45 @@ const handleCreateVariantGroup = async (selectedProducts: Product[]) => {
                       />
                     </div>
 
-                    <div>
+                   <div>
                       <label className="block text-sm font-medium text-gray-700">Marque</label>
-                      <input
-                        type="text"
-                        placeholder="Marque"
-                        value={currentProduct.marque}
-                        onChange={(e) => {
-                          if (editingProduct) {
-                            setEditingProduct({...editingProduct, marque: e.target.value});
-                          } else {
-                            setNewProduct({...newProduct, marque: e.target.value});
-                          }
-                        }}
-                        className="w-full p-2 border rounded text-sm"
-                      />
+                      <div className="flex gap-2">
+                        <select
+                          value={editingProduct?.marque ?? newProduct.marque}
+                          onChange={(e) => {
+                            const value = e.target.value;
+                            if (editingProduct) {
+                              setEditingProduct({...editingProduct, marque: value});
+                            } else {
+                              setNewProduct({...newProduct, marque: value});
+                            }
+                          }}
+                          className="flex-1 p-2 border rounded text-sm"
+                        >
+                          <option value="">-- Sélectionner ou saisir --</option>
+                          {allBrands.map(brand => (
+                            <option key={brand} value={brand}>{brand}</option>
+                          ))}
+                          <option value="__custom__">+ Ajouter une nouvelle marque</option>
+                        </select>
+                        
+                        {/* Input pour nouvelle marque */}
+                        {((editingProduct?.marque === '__custom__') || (newProduct.marque === '__custom__')) && (
+                          <input
+                            type="text"
+                            placeholder="Nouvelle marque"
+                            autoFocus
+                            onChange={(e) => {
+                              if (editingProduct) {
+                                setEditingProduct({...editingProduct, marque: e.target.value});
+                              } else {
+                                setNewProduct({...newProduct, marque: e.target.value});
+                              }
+                            }}
+                            className="flex-1 p-2 border rounded text-sm border-green-500"
+                          />
+                        )}
+                      </div>
                     </div>
 
                     <div>
@@ -563,7 +609,7 @@ const handleCreateVariantGroup = async (selectedProducts: Product[]) => {
                         type="number"
                         step="0.01"
                         placeholder="Prix"
-                        value={currentProduct.prix_reference}
+                        value={editingProduct?.prix_reference ?? newProduct.prix_reference}
                         onChange={(e) => {
                           const value = parseFloat(e.target.value) || 0;
                           if (editingProduct) {
@@ -581,7 +627,7 @@ const handleCreateVariantGroup = async (selectedProducts: Product[]) => {
                       <input
                         type="number"
                         placeholder="Réduction"
-                        value={currentProduct.reduction || 0}
+                        value={(editingProduct?.reduction ?? newProduct.reduction) || 0}
                         onChange={(e) => {
                           const value = parseInt(e.target.value) || 0;
                           if (editingProduct) {
@@ -597,7 +643,7 @@ const handleCreateVariantGroup = async (selectedProducts: Product[]) => {
                     <div>
                       <label className="block text-sm font-medium text-gray-700">Catégorie</label>
                       <select
-                        value={currentProduct.categorie}
+                        value={editingProduct?.categorie ?? newProduct.categorie}
                         onChange={(e) => {
                           if (editingProduct) {
                             setEditingProduct({...editingProduct, categorie: e.target.value as any});
@@ -621,7 +667,7 @@ const handleCreateVariantGroup = async (selectedProducts: Product[]) => {
                       <input
                         type="number"
                         placeholder="Qté ref"
-                        value={currentProduct.quantite_reference}
+                        value={editingProduct?.quantite_reference ?? newProduct.quantite_reference}
                         onChange={(e) => {
                           const value = parseInt(e.target.value) || 0;
                           if (editingProduct) {
@@ -633,13 +679,50 @@ const handleCreateVariantGroup = async (selectedProducts: Product[]) => {
                         className="w-full p-2 border rounded text-sm"
                       />
                     </div>
+                  </div>
 
+                  {/* 🚀 PRIX CALCULÉ EN TEMPS RÉEL */}
+                  <div className="bg-gradient-to-r from-green-50 to-emerald-50 p-4 rounded-lg border-2 border-green-300 shadow-sm my-4">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <label className="block text-sm font-medium text-green-800 mb-1">
+                          💰 Prix de vente final
+                        </label>
+                        <div className="text-3xl font-bold text-green-600">
+                          {(() => {
+                            const product = editingProduct || newProduct;
+                            const prixReel = calculateRealPrice(
+                              product.prix_reference || 0,
+                              product.quantite_reference || 1,
+                              product.quantite_reelle || 1,
+                              product.reduction || 0
+                            );
+                            return `${prixReel.toFixed(2)}€`;
+                          })()}
+                        </div>
+                      </div>
+                      <div className="text-right text-xs text-gray-600">
+                        <p className="mb-1">
+                          <span className="font-semibold">Prix/ml :</span> {(((editingProduct?.prix_reference ?? newProduct.prix_reference) || 0) / ((editingProduct?.quantite_reference ?? newProduct.quantite_reference) || 1)).toFixed(3)}€
+                        </p>
+                        <p className="mb-1">
+                          <span className="font-semibold">Quantité :</span> {editingProduct?.quantite_reelle ?? newProduct.quantite_reelle}ml
+                        </p>
+                        <p>
+                          <span className="font-semibold">Réduction :</span> -{editingProduct?.reduction ?? newProduct.reduction}%
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Suite du formulaire */}
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div>
                       <label className="block text-sm font-medium text-gray-700">Quantité réelle (ml)</label>
                       <input
                         type="number"
                         placeholder="Qté réelle"
-                        value={currentProduct.quantite_reelle}
+                        value={editingProduct?.quantite_reelle ?? newProduct.quantite_reelle}
                         onChange={(e) => {
                           const value = parseInt(e.target.value) || 0;
                           if (editingProduct) {
@@ -657,7 +740,7 @@ const handleCreateVariantGroup = async (selectedProducts: Product[]) => {
                       <input
                         type="number"
                         placeholder="Stock"
-                        value={currentProduct.stock_unite}
+                        value={editingProduct?.stock_unite ?? newProduct.stock_unite}
                         onChange={(e) => {
                           const value = parseInt(e.target.value) || 0;
                           if (editingProduct) {
@@ -675,7 +758,7 @@ const handleCreateVariantGroup = async (selectedProducts: Product[]) => {
                       <input
                         type="text"
                         placeholder="Ex: Étagère A"
-                        value={currentProduct.emplacement_stock || ''}
+                        value={(editingProduct?.emplacement_stock ?? newProduct.emplacement_stock) || ''}
                         onChange={(e) => {
                           if (editingProduct) {
                             setEditingProduct({...editingProduct, emplacement_stock: e.target.value});
@@ -692,7 +775,7 @@ const handleCreateVariantGroup = async (selectedProducts: Product[]) => {
                     <label className="block text-sm font-medium text-gray-700">Description</label>
                     <textarea
                       placeholder="Description du produit"
-                      value={currentProduct.description || ''}
+                      value={(editingProduct?.description ?? newProduct.description) || ''}
                       onChange={(e) => {
                         if (editingProduct) {
                           setEditingProduct({...editingProduct, description: e.target.value});
@@ -718,7 +801,7 @@ const handleCreateVariantGroup = async (selectedProducts: Product[]) => {
                       <button
                         onClick={() => {
                           setEditingProduct(null);
-                          setPreviewImageUrl(''); // ✅ Réinitialiser le preview
+                          setPreviewImageUrl('');
                         }}
                         className="px-4 py-2 md:px-6 md:py-2 bg-gray-500 text-white rounded hover:bg-gray-600 text-sm md:text-base"
                       >
@@ -743,6 +826,7 @@ const handleCreateVariantGroup = async (selectedProducts: Product[]) => {
                   )}
                 </div>
               </div>
+
 
               <div className="mb-4 flex flex-wrap gap-2">
                 <select
