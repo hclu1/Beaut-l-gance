@@ -222,142 +222,151 @@ const handleAddProduct = async () => {
   }
 };
 
+const handleUpdateProduct = async () => {
+  if (!editingProduct) return;
 
-  const handleUpdateProduct = async () => {
-    if (!editingProduct) return;
+  try {
+    // 🚀 CORRECTION: Passer l'ID en premier paramètre, puis les updates
+    const updates = {
+      ...editingProduct,
+      image_url: previewImageUrl || editingProduct.image_url // Utiliser le preview si disponible
+    };
+    
+    await ProductService.updateProduct(editingProduct.id, updates);
+    console.log('Produit mis à jour dans Supabase');
 
-    try {
-      await ProductService.updateProduct(editingProduct);
-      console.log('Produit mis à jour dans Supabase');
-
-      if (onReloadProducts) {
-        await onReloadProducts();
-      }
-
-      setEditingProduct(null);
-      setPreviewImageUrl(''); // ✅ Réinitialiser le preview
-      alert('Produit mis à jour avec succès !');
-    } catch (error) {
-      console.error('Erreur mise à jour produit:', error);
-      alert('Erreur lors de la mise à jour du produit dans Supabase');
-    }
-  };
-
-  const handleDeleteProduct = async (id: string) => {
-    if (!confirm('Supprimer ce produit ?')) return;
-
-    try {
-      await ProductService.deleteProduct(id);
-      console.log('Produit supprimé de Supabase');
-
-      if (onReloadProducts) {
-        await onReloadProducts();
-      }
-
-      alert('Produit supprimé avec succès !');
-    } catch (error) {
-      console.error('Erreur suppression produit:', error);
-      alert('Erreur lors de la suppression du produit de Supabase');
-    }
-  };
-
-  const handleOrderStatusChange = async (orderId: string, newStatus: string) => {
-    const updatedOrders = orders.map(o =>
-      o.id === orderId ? { ...o, status: newStatus } : o
-    );
-    setOrders(updatedOrders);
-
-    try {
-      await ProductService.updateOrderStatus(orderId, newStatus);
-    } catch (error) {
-      console.error('Erreur mise à jour statut:', error);
-    }
-  };
-
-  const handleDeleteOrder = async (orderId: string) => {
-    if (!confirm('Supprimer cette commande ?')) return;
-
-    try {
-      await ProductService.deleteOrder(orderId);
-      setOrders(orders.filter(o => o.id !== orderId));
-      alert('Commande supprimée avec succès !');
-    } catch (error) {
-      console.error('Erreur suppression commande:', error);
-      alert('Erreur lors de la suppression de la commande');
-    }
-  };
-
-  const togglePreparedItem = async (orderId: string, productId: string) => {
-    const order = orders.find(o => o.id === orderId);
-    if (!order) return;
-
-    const newPreparedItems = { ...order.preparedItems };
-    newPreparedItems[productId] = !newPreparedItems[productId];
-
-    const updatedOrders = orders.map(o =>
-      o.id === orderId ? { ...o, preparedItems: newPreparedItems } : o
-    );
-
-    setOrders(updatedOrders);
-
-    try {
-      await ProductService.updateOrderPreparedItems(orderId, newPreparedItems);
-    } catch (error) {
-      console.error('Erreur mise à jour items préparés:', error);
-    }
-  };
-
-  const allItemsPrepared = (order: Order) => {
-    return order.items.every(item => order.preparedItems?.[item.id] === true);
-  };
-
-  const handleFindSimilarProducts = (product: Product) => {
-    const similar = products.filter(p => 
-      p.id !== product.id &&
-      p.nom.toLowerCase() === product.nom.toLowerCase() &&
-      p.marque.toLowerCase() === product.marque.toLowerCase()
-    );
-
-    if (similar.length === 0) {
-      alert('Aucun produit similaire trouvé pour créer une variante');
-      return;
+    if (onReloadProducts) {
+      await onReloadProducts();
     }
 
-    setVariantBaseProduct(product);
-    setSimilarProducts(similar);
-    setAddingVariant(true);
-  };
+    setEditingProduct(null);
+    setPreviewImageUrl(''); // ✅ Réinitialiser le preview
+    alert('Produit mis à jour avec succès !');
+  } catch (error) {
+    console.error('Erreur mise à jour produit:', error);
+    alert('Erreur lors de la mise à jour du produit dans Supabase');
+  }
+};
 
-  const handleCreateVariantGroup = async (selectedProducts: Product[]) => {
-    if (selectedProducts.length < 2) {
-      alert('Sélectionnez au moins 2 produits pour créer un groupe de variantes');
-      return;
+const handleDeleteProduct = async (id: string) => {
+  if (!confirm('Supprimer ce produit ?')) return;
+
+  try {
+    // 🚀 CORRECTION: Convertir l'ID en nombre si nécessaire
+    const numericId = typeof id === 'string' ? parseInt(id, 10) : id;
+    await ProductService.deleteProduct(numericId);
+    console.log('Produit supprimé de Supabase');
+
+    if (onReloadProducts) {
+      await onReloadProducts();
     }
 
-    const variantId = `variant_${Date.now()}`;
+    alert('Produit supprimé avec succès !');
+  } catch (error) {
+    console.error('Erreur suppression produit:', error);
+    alert('Erreur lors de la suppression du produit de Supabase');
+  }
+};
 
-    try {
-      for (const product of selectedProducts) {
-        await ProductService.updateProduct({
-          ...product,
-          variant_id: variantId
-        });
-      }
+const handleOrderStatusChange = async (orderId: string, newStatus: string) => {
+  const updatedOrders = orders.map(o =>
+    o.id === orderId ? { ...o, status: newStatus } : o
+  );
+  setOrders(updatedOrders);
 
-      if (onReloadProducts) {
-        await onReloadProducts();
-      }
+  try {
+    await ProductService.updateOrderStatus(orderId, newStatus);
+  } catch (error) {
+    console.error('Erreur mise à jour statut:', error);
+  }
+};
 
-      setAddingVariant(false);
-      setVariantBaseProduct(null);
-      setSimilarProducts([]);
+const handleDeleteOrder = async (orderId: string) => {
+  if (!confirm('Supprimer cette commande ?')) return;
 
-      alert(`✅ Groupe de variantes créé avec succès ! (${selectedProducts.length} produits liés)`);
-    } catch (error) {
-      console.error('Erreur création groupe variantes:', error);
-      alert('Erreur lors de la création du groupe de variantes');
+  try {
+    await ProductService.deleteOrder(orderId);
+    setOrders(orders.filter(o => o.id !== orderId));
+    alert('Commande supprimée avec succès !');
+  } catch (error) {
+    console.error('Erreur suppression commande:', error);
+    alert('Erreur lors de la suppression de la commande');
+  }
+};
+
+const togglePreparedItem = async (orderId: string, productId: string) => {
+  const order = orders.find(o => o.id === orderId);
+  if (!order) return;
+
+  const newPreparedItems = { ...order.preparedItems };
+  newPreparedItems[productId] = !newPreparedItems[productId];
+
+  const updatedOrders = orders.map(o =>
+    o.id === orderId ? { ...o, preparedItems: newPreparedItems } : o
+  );
+
+  setOrders(updatedOrders);
+
+  try {
+    await ProductService.updateOrderPreparedItems(orderId, newPreparedItems);
+  } catch (error) {
+    console.error('Erreur mise à jour items préparés:', error);
+  }
+};
+
+const allItemsPrepared = (order: Order) => {
+  return order.items.every(item => order.preparedItems?.[item.id] === true);
+};
+
+const handleFindSimilarProducts = (product: Product) => {
+  const similar = products.filter(p => 
+    p.id !== product.id &&
+    p.nom.toLowerCase() === product.nom.toLowerCase() &&
+    p.marque.toLowerCase() === product.marque.toLowerCase()
+  );
+
+  if (similar.length === 0) {
+    alert('Aucun produit similaire trouvé pour créer une variante');
+    return;
+  }
+
+  setVariantBaseProduct(product);
+  setSimilarProducts(similar);
+  setAddingVariant(true);
+};
+
+const handleCreateVariantGroup = async (selectedProducts: Product[]) => {
+  if (selectedProducts.length < 2) {
+    alert('Sélectionnez au moins 2 produits pour créer un groupe de variantes');
+    return;
+  }
+
+  const variantId = `variant_${Date.now()}`;
+
+  try {
+    for (const product of selectedProducts) {
+      // 🚀 CORRECTION: Passer l'ID, puis les updates
+      await ProductService.updateProduct(product.id, {
+        ...product,
+        variant_id: variantId
+      });
     }
-  };
+
+    if (onReloadProducts) {
+      await onReloadProducts();
+    }
+
+    setAddingVariant(false);
+    setVariantBaseProduct(null);
+    setSimilarProducts([]);
+
+    alert(`✅ Groupe de variantes créé avec succès ! (${selectedProducts.length} produits liés)`);
+  } catch (error) {
+    console.error('Erreur création groupe variantes:', error);
+    alert('Erreur lors de la création du groupe de variantes');
+  }
+};
+
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-50 p-2 md:p-4 overflow-y-auto">
