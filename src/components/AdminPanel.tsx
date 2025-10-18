@@ -10,34 +10,28 @@ interface AdminPanelProps {
   onReloadProducts?: () => void;
   setAdmin: React.Dispatch<React.SetStateAction<boolean>>;
 }
-
 const AdminPanel: React.FC<AdminPanelProps> = ({ 
-  products, 
+  products = [], 
   setProducts, 
-  orders, 
+  orders = [], 
   setOrders,
   onReloadProducts,
   setAdmin
 }) => {
   const [editingProduct, setEditingProduct] = useState<Product | null>(null);
   const [uploadingImage, setUploadingImage] = useState(false);
-const [previewImageUrl, setPreviewImageUrl] = useState<string>(''); // 🚀 AJOUT
+  const [previewImageUrl, setPreviewImageUrl] = useState<string>('');
 
   const [activeTab, setActiveTab] = useState<'products' | 'orders'>('products');
   const [showQR, setShowQR] = useState(false);
   
-  // NOUVEAUX ÉTATS pour la gestion des variantes
+  // États pour la gestion des variantes
   const [addingVariant, setAddingVariant] = useState<boolean>(false);
   const [variantBaseProduct, setVariantBaseProduct] = useState<Product | null>(null);
   const [similarProducts, setSimilarProducts] = useState<Product[]>([]);
 
   // États pour le filtre de marque/emplacement combiné
   const [selectedBrandOrEmplacement, setSelectedBrandOrEmplacement] = useState<string>('all');
-
-  // NOUVEAUX : États pour la gestion des variantes de produits multi-quantités
-  const [managingVariants, setManagingVariants] = useState(false);
-  const [variantGroupBaseProduct, setVariantGroupBaseProduct] = useState<Product | null>(null);
-  const [variantProductsList, setVariantProductsList] = useState<Product[]>([]);
 
   const allBrands = Array.from(new Set(products.map(p => p.marque))).sort();
   const allEmplacements = Array.from(new Set(products.map(p => p.emplacement_stock).filter(e => e))).sort();
@@ -116,8 +110,8 @@ const [previewImageUrl, setPreviewImageUrl] = useState<string>(''); // 🚀 AJOU
     });
   };
 
-  // MODIFIÉE : Upload d'image avec compression
- const handleImageUpload = async (file: File, isEditing = false) => {
+  // Upload d'image avec compression
+  const handleImageUpload = async (file: File, isEditing = false) => {
   if (!file) return;
 
   if (!file.type.startsWith('image/')) {
@@ -135,7 +129,7 @@ const [previewImageUrl, setPreviewImageUrl] = useState<string>(''); // 🚀 AJOU
     const imageUrl = await ProductService.uploadImage(compressedFile);
     console.log(`🎯 URL récupérée:`, imageUrl);
     
-    // 🚀 AJOUT : Mettre à jour le preview immédiatement
+    // 🚀 CRITIQUE : Mettre à jour le preview immédiatement
     setPreviewImageUrl(imageUrl);
     
     if (isEditing && editingProduct) {
@@ -155,9 +149,7 @@ const [previewImageUrl, setPreviewImageUrl] = useState<string>(''); // 🚀 AJOU
   }
 };
 
-
-
-  // NOUVELLE FONCTION pour vérifier les doublons - RECHERCHE PARTIELLE
+  // Vérifier les doublons
   const checkForDuplicates = async () => {
     if (!newProduct.nom || !newProduct.marque) {
       alert('Veuillez entrer un nom et une marque pour vérifier les doublons');
@@ -219,6 +211,8 @@ const [previewImageUrl, setPreviewImageUrl] = useState<string>(''); // 🚀 AJOU
         emplacement_stock: '',
         description: ''
       });
+      
+      setPreviewImageUrl(''); // ✅ Réinitialiser le preview
 
       alert('Produit ajouté avec succès !');
     } catch (error) {
@@ -239,6 +233,7 @@ const [previewImageUrl, setPreviewImageUrl] = useState<string>(''); // 🚀 AJOU
       }
 
       setEditingProduct(null);
+      setPreviewImageUrl(''); // ✅ Réinitialiser le preview
       alert('Produit mis à jour avec succès !');
     } catch (error) {
       console.error('Erreur mise à jour produit:', error);
@@ -388,27 +383,12 @@ const [previewImageUrl, setPreviewImageUrl] = useState<string>(''); // 🚀 AJOU
             <h3 className="font-bold mb-2 text-sm md:text-base">QR Code de synchronisation (Multi-devices)</h3>
             <p className="text-xs md:text-sm text-gray-600 mb-2">
               Scannez ce QR code avec un autre appareil pour synchroniser produits et commandes.
-              Après synchronisation, les deux appareils seront indépendants.
             </p>
             <div className="bg-white p-4 inline-block rounded border">
-              <img
-                src={`https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(
-                  `${window.location.origin}${window.location.pathname}?sync=${encodeURIComponent(
-                    JSON.stringify({
-                      products,
-                      orders,
-                      timestamp: Date.now(),
-                      deviceId: 'Device-' + Math.random().toString(36).substr(2, 9)
-                    })
-                  )}`
-                )}`}
-                alt="QR Code"
-                className="w-32 h-32 md:w-48 md:h-48"
-              />
+              <div className="w-32 h-32 md:w-48 md:h-48 bg-gray-200 flex items-center justify-center">
+                QR Code
+              </div>
             </div>
-            <p className="text-xs text-gray-500 mt-2">
-              ⚠️ Note: Après scan, chaque appareil gardera sa propre copie locale des données
-            </p>
           </div>
         )}
 
@@ -443,53 +423,59 @@ const [previewImageUrl, setPreviewImageUrl] = useState<string>(''); // 🚀 AJOU
                   {editingProduct ? '✏️ Modifier un produit' : '➕ Ajouter un produit'}
                 </h3>
 
-                {(() => {
-                  
-
-                  return (
-                    <div className="space-y-4">
-                      {/* Section image EN PREMIER avec indicateur d'optimisation */}
-                   <div>
+                <div className="space-y-4">
+                  {/* Section image avec logique simplifiée */}
+            <div>
   <label className="block text-sm font-medium text-gray-700 mb-2">
     Image du produit 
     <span className="text-xs text-green-600 ml-2">✨ Optimisation automatique WebP</span>
   </label>
   
   <div className="border-2 border-dashed border-gray-300 rounded-lg p-4 text-center">
-    {(previewImageUrl || editingProduct?.image_url || newProduct.image_url) ? (
-      <div className="space-y-2">
-        <img 
-          src={previewImageUrl || editingProduct?.image_url || newProduct.image_url} 
-          alt="Aperçu" 
-          className="w-32 h-32 object-cover rounded border mx-auto"
-          onError={(e) => {
-            console.error('❌ Erreur chargement image:', previewImageUrl || editingProduct?.image_url || newProduct.image_url);
-          }}
-        />
-        <button
-          type="button"
-          onClick={() => {
-            setPreviewImageUrl('');
-            if (editingProduct) {
-              setEditingProduct({...editingProduct, image_url: ''});
-            } else {
-              setNewProduct({...newProduct, image_url: ''});
-            }
-          }}
-          className="text-red-500 text-sm hover:underline"
-        >
-          Supprimer l'image
-        </button>
-      </div>
-    ) : (
-      <div className="space-y-2">
-        <div className="text-gray-400 text-4xl">📸</div>
-        <p className="text-gray-500">Cliquez pour ajouter une image</p>
-        <p className="text-xs text-green-600">
-          L'image sera automatiquement optimisée et convertie en WebP
-        </p>
-      </div>
-    )}
+    {(() => {
+      // 🔍 DEBUG
+      console.log('🖼️ États image:', {
+        previewImageUrl,
+        editingImage: editingProduct?.image_url,
+        newProductImage: newProduct.image_url
+      });
+      
+      const imageToShow = previewImageUrl || editingProduct?.image_url || newProduct.image_url;
+      
+      return imageToShow ? (
+        <div className="space-y-2">
+          <img 
+            src={imageToShow} 
+            alt="Aperçu" 
+            className="w-32 h-32 object-cover rounded border mx-auto"
+            onLoad={() => console.log('✅ Image chargée:', imageToShow)}
+            onError={(e) => console.error('❌ Erreur image:', imageToShow)}
+          />
+          <button
+            type="button"
+            onClick={() => {
+              setPreviewImageUrl('');
+              if (editingProduct) {
+                setEditingProduct({...editingProduct, image_url: ''});
+              } else {
+                setNewProduct({...newProduct, image_url: ''});
+              }
+            }}
+            className="text-red-500 text-sm hover:underline"
+          >
+            Supprimer l'image
+          </button>
+        </div>
+      ) : (
+        <div className="space-y-2">
+          <div className="text-gray-400 text-4xl">📸</div>
+          <p className="text-gray-500">Cliquez pour ajouter une image</p>
+          <p className="text-xs text-green-600">
+            L'image sera automatiquement optimisée et convertie en WebP
+          </p>
+        </div>
+      );
+    })()}
     
     <input
       type="file"
@@ -513,193 +499,190 @@ const [previewImageUrl, setPreviewImageUrl] = useState<string>(''); // 🚀 AJOU
   </div>
 </div>
 
-
-                      {/* Champs du formulaire */}
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        <div>
-                          <label className="block text-sm font-medium text-gray-700">Nom</label>
-                          <input
-                            type="text"
-                            placeholder="Nom du produit"
-                            value={currentProduct.nom}
-                            onChange={(e) => {
-                  if (editingProduct) {
-                    setEditingProduct({...editingProduct, nom: e.target.value});
-                  } else {
-                    setNewProduct({...newProduct, nom: e.target.value});
-                  }
-                }}
-                            className="w-full p-2 border rounded text-sm"
-                          />
-                        </div>
-
-                        <div>
-                          <label className="block text-sm font-medium text-gray-700">Marque</label>
-                          <input
-                            type="text"
-                            placeholder="Marque"
-                            value={currentProduct.marque}
-                            onChange={(e) => {
-                  if (editingProduct) {
-                    setEditingProduct({...editingProduct, marque: e.target.value});
-                  } else {
-                    setNewProduct({...newProduct, marque: e.target.value});
-                  }
-                }}
-                            className="w-full p-2 border rounded text-sm"
-                          />
-                        </div>
-
-                        <div>
-                          <label className="block text-sm font-medium text-gray-700">Prix référence (€)</label>
-                          <input
-                            type="number"
-                            step="0.01"
-                            placeholder="Prix"
-                            value={currentProduct.prix_reference}
-                            onChange={(e) => {
-                  const value = parseFloat(e.target.value) || 0;
-                  if (editingProduct) {
-                    setEditingProduct({...editingProduct, prix_reference: value});
-                  } else {
-                    setNewProduct({...newProduct, prix_reference: value});
-                  }
-                }}
-                            className="w-full p-2 border rounded text-sm"
-                          />
-                        </div>
-
-                        <div>
-                          <label className="block text-sm font-medium text-gray-700">Réduction (%)</label>
-                          <input
-                            type="number"
-                            placeholder="Réduction"
-                            value={currentProduct.reduction || 0}
-                            onChange={(e) => {
-                  const value = parseInt(e.target.value) || 0;
-                  if (editingProduct) {
-                    setEditingProduct({...editingProduct, reduction: value});
-                  } else {
-                    setNewProduct({...newProduct, reduction: value});
-                  }
-                }}
-                            className="w-full p-2 border rounded text-sm"
-                          />
-                        </div>
-
-                        <div>
-                          <label className="block text-sm font-medium text-gray-700">Catégorie</label>
-                          <select
-                            value={currentProduct.categorie}
-                            onChange={(e) => {
-                  if (editingProduct) {
-                    setEditingProduct({...editingProduct, categorie: e.target.value as any});
-                  } else {
-                    setNewProduct({...newProduct, categorie: e.target.value as any});
-                  }
-                }}
-                            className="w-full p-2 border rounded text-sm"
-                          >
-                            <option value="makeup">Maquillage</option>
-                            <option value="skincare">Soins Visage</option>
-                            <option value="bodycare">Soins Corps</option>
-                            <option value="haircare">Cheveux</option>
-                            <option value="fragrance">Parfums</option>
-                            <option value="accessories">Accessoires</option>
-                          </select>
-                        </div>
-
-                        <div>
-                          <label className="block text-sm font-medium text-gray-700">Quantité référence (ml)</label>
-                          <input
-                            type="number"
-                            placeholder="Qté ref"
-                            value={currentProduct.quantite_reference}
-                            onChange={(e) => {
-                  const value = parseInt(e.target.value) || 0;
-                  if (editingProduct) {
-                    setEditingProduct({...editingProduct, quantite_reference: value});
-                  } else {
-                    setNewProduct({...newProduct, quantite_reference: value});
-                  }
-                }}
-                            className="w-full p-2 border rounded text-sm"
-                          />
-                        </div>
-
-                        <div>
-                          <label className="block text-sm font-medium text-gray-700">Quantité réelle (ml)</label>
-                          <input
-                            type="number"
-                            placeholder="Qté réelle"
-                            value={currentProduct.quantite_reelle}
-                            onChange={(e) => {
-                  const value = parseInt(e.target.value) || 0;
-                  if (editingProduct) {
-                    setEditingProduct({...editingProduct, quantite_reelle: value});
-                  } else {
-                    setNewProduct({...newProduct, quantite_reelle: value});
-                  }
-                }}
-                            className="w-full p-2 border rounded text-sm"
-                          />
-                        </div>
-
-                        <div>
-                          <label className="block text-sm font-medium text-gray-700">Stock (unités)</label>
-                          <input
-                            type="number"
-                            placeholder="Stock"
-                            value={currentProduct.stock_unite}
-                            onChange={(e) => {
-                  const value = parseInt(e.target.value) || 0;
-                  if (editingProduct) {
-                    setEditingProduct({...editingProduct, stock_unite: value});
-                  } else {
-                    setNewProduct({...newProduct, stock_unite: value});
-                  }
-                }}
-                            className="w-full p-2 border rounded text-sm"
-                          />
-                        </div>
-
-                        <div>
-                          <label className="block text-sm font-medium text-gray-700">Emplacement stock</label>
-                          <input
-                            type="text"
-                            placeholder="Ex: Étagère A"
-                            value={currentProduct.emplacement_stock || ''}
-                            onChange={(e) => {
-                  if (editingProduct) {
-                    setEditingProduct({...editingProduct, emplacement_stock: e.target.value});
-                  } else {
-                    setNewProduct({...newProduct, emplacement_stock: e.target.value});
-                  }
-                }}
-                            className="w-full p-2 border rounded text-sm"
-                          />
-                        </div>
-                      </div>
-
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700">Description</label>
-                        <textarea
-                          placeholder="Description du produit"
-                          value={currentProduct.description || ''}
-                          onChange={(e) => {
-                  if (editingProduct) {
-                    setEditingProduct({...editingProduct, description: e.target.value});
-                  } else {
-                    setNewProduct({...newProduct, description: e.target.value});
-                  }
-                }}
-                          className="w-full p-2 border rounded text-sm"
-                          rows={2}
-                        />
-                      </div>
+                  {/* Champs du formulaire */}
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700">Nom</label>
+                      <input
+                        type="text"
+                        placeholder="Nom du produit"
+                        value={currentProduct.nom}
+                        onChange={(e) => {
+                          if (editingProduct) {
+                            setEditingProduct({...editingProduct, nom: e.target.value});
+                          } else {
+                            setNewProduct({...newProduct, nom: e.target.value});
+                          }
+                        }}
+                        className="w-full p-2 border rounded text-sm"
+                      />
                     </div>
-                  );
-                })()}
+
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700">Marque</label>
+                      <input
+                        type="text"
+                        placeholder="Marque"
+                        value={currentProduct.marque}
+                        onChange={(e) => {
+                          if (editingProduct) {
+                            setEditingProduct({...editingProduct, marque: e.target.value});
+                          } else {
+                            setNewProduct({...newProduct, marque: e.target.value});
+                          }
+                        }}
+                        className="w-full p-2 border rounded text-sm"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700">Prix référence (€)</label>
+                      <input
+                        type="number"
+                        step="0.01"
+                        placeholder="Prix"
+                        value={currentProduct.prix_reference}
+                        onChange={(e) => {
+                          const value = parseFloat(e.target.value) || 0;
+                          if (editingProduct) {
+                            setEditingProduct({...editingProduct, prix_reference: value});
+                          } else {
+                            setNewProduct({...newProduct, prix_reference: value});
+                          }
+                        }}
+                        className="w-full p-2 border rounded text-sm"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700">Réduction (%)</label>
+                      <input
+                        type="number"
+                        placeholder="Réduction"
+                        value={currentProduct.reduction || 0}
+                        onChange={(e) => {
+                          const value = parseInt(e.target.value) || 0;
+                          if (editingProduct) {
+                            setEditingProduct({...editingProduct, reduction: value});
+                          } else {
+                            setNewProduct({...newProduct, reduction: value});
+                          }
+                        }}
+                        className="w-full p-2 border rounded text-sm"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700">Catégorie</label>
+                      <select
+                        value={currentProduct.categorie}
+                        onChange={(e) => {
+                          if (editingProduct) {
+                            setEditingProduct({...editingProduct, categorie: e.target.value as any});
+                          } else {
+                            setNewProduct({...newProduct, categorie: e.target.value as any});
+                          }
+                        }}
+                        className="w-full p-2 border rounded text-sm"
+                      >
+                        <option value="makeup">Maquillage</option>
+                        <option value="skincare">Soins Visage</option>
+                        <option value="bodycare">Soins Corps</option>
+                        <option value="haircare">Cheveux</option>
+                        <option value="fragrance">Parfums</option>
+                        <option value="accessories">Accessoires</option>
+                      </select>
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700">Quantité référence (ml)</label>
+                      <input
+                        type="number"
+                        placeholder="Qté ref"
+                        value={currentProduct.quantite_reference}
+                        onChange={(e) => {
+                          const value = parseInt(e.target.value) || 0;
+                          if (editingProduct) {
+                            setEditingProduct({...editingProduct, quantite_reference: value});
+                          } else {
+                            setNewProduct({...newProduct, quantite_reference: value});
+                          }
+                        }}
+                        className="w-full p-2 border rounded text-sm"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700">Quantité réelle (ml)</label>
+                      <input
+                        type="number"
+                        placeholder="Qté réelle"
+                        value={currentProduct.quantite_reelle}
+                        onChange={(e) => {
+                          const value = parseInt(e.target.value) || 0;
+                          if (editingProduct) {
+                            setEditingProduct({...editingProduct, quantite_reelle: value});
+                          } else {
+                            setNewProduct({...newProduct, quantite_reelle: value});
+                          }
+                        }}
+                        className="w-full p-2 border rounded text-sm"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700">Stock (unités)</label>
+                      <input
+                        type="number"
+                        placeholder="Stock"
+                        value={currentProduct.stock_unite}
+                        onChange={(e) => {
+                          const value = parseInt(e.target.value) || 0;
+                          if (editingProduct) {
+                            setEditingProduct({...editingProduct, stock_unite: value});
+                          } else {
+                            setNewProduct({...newProduct, stock_unite: value});
+                          }
+                        }}
+                        className="w-full p-2 border rounded text-sm"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700">Emplacement stock</label>
+                      <input
+                        type="text"
+                        placeholder="Ex: Étagère A"
+                        value={currentProduct.emplacement_stock || ''}
+                        onChange={(e) => {
+                          if (editingProduct) {
+                            setEditingProduct({...editingProduct, emplacement_stock: e.target.value});
+                          } else {
+                            setNewProduct({...newProduct, emplacement_stock: e.target.value});
+                          }
+                        }}
+                        className="w-full p-2 border rounded text-sm"
+                      />
+                    </div>
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700">Description</label>
+                    <textarea
+                      placeholder="Description du produit"
+                      value={currentProduct.description || ''}
+                      onChange={(e) => {
+                        if (editingProduct) {
+                          setEditingProduct({...editingProduct, description: e.target.value});
+                        } else {
+                          setNewProduct({...newProduct, description: e.target.value});
+                        }
+                      }}
+                      className="w-full p-2 border rounded text-sm"
+                      rows={2}
+                    />
+                  </div>
+                </div>
 
                 <div className="flex gap-2 mt-4">
                   {editingProduct ? (
@@ -711,7 +694,10 @@ const [previewImageUrl, setPreviewImageUrl] = useState<string>(''); // 🚀 AJOU
                         Modifier
                       </button>
                       <button
-                        onClick={() => setEditingProduct(null)}
+                        onClick={() => {
+                          setEditingProduct(null);
+                          setPreviewImageUrl(''); // ✅ Réinitialiser le preview
+                        }}
                         className="px-4 py-2 md:px-6 md:py-2 bg-gray-500 text-white rounded hover:bg-gray-600 text-sm md:text-base"
                       >
                         Annuler
@@ -784,7 +770,10 @@ const [previewImageUrl, setPreviewImageUrl] = useState<string>(''); // 🚀 AJOU
                       </div>
                       <div className="flex gap-1 md:gap-2 flex-shrink-0">
                         <button
-                          onClick={() => setEditingProduct(product)}
+                          onClick={() => {
+                            setEditingProduct(product);
+                            setPreviewImageUrl(''); // ✅ Réinitialiser le preview quand on passe en édition
+                          }}
                           className="px-2 py-1 md:px-3 md:py-1 bg-blue-500 text-white rounded hover:bg-blue-600 text-xs"
                         >
                           ✏️
@@ -939,7 +928,7 @@ const [previewImageUrl, setPreviewImageUrl] = useState<string>(''); // 🚀 AJOU
                                   {item.nom} ({item.marque})
                                 </p>
                                 <p className="text-gray-600 text-xs">
-                                  {item.quantite_reelle}ml × {item.quantite_achat} | {item.emplacement_stock || 'Sans emplacement'}
+                                  {item.quantite_reelle}ml × {item.quantite_achat || 1} | {item.emplacement_stock || 'Sans emplacement'}
                                 </p>
                               </div>
                             </div>
@@ -947,7 +936,7 @@ const [previewImageUrl, setPreviewImageUrl] = useState<string>(''); // 🚀 AJOU
                               {((item.prix_reference / (item.quantite_reference || 1)) * 
                                 (item.quantite_reelle || item.quantite_reference) * 
                                 (1 - (item.reduction || 0) / 100) * 
-                                item.quantite_achat).toFixed(2)}€
+                                (item.quantite_achat || 1)).toFixed(2)}€
                             </p>
                           </div>
                         );

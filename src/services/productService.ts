@@ -64,17 +64,11 @@ export const ProductService = {
         throw error;
       }
 
-      // Récupérer l'URL publique avec transformations
-      const { data: { publicUrl } } = supabase.storage
-        .from('product-images')
-        .getPublicUrl(filePath, {
-          transform: {
-            width: 800,
-            height: 800,
-            quality: 80,
-            format: 'webp'
-          }
-        });
+     // Récupérer l'URL publique DIRECTE (sans transformation pour éviter les erreurs CORS)
+const { data: { publicUrl } } = supabase.storage
+  .from('product-images')
+  .getPublicUrl(filePath);
+
 
       console.log('Image uploadée:', publicUrl);
       return publicUrl;
