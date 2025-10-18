@@ -39,16 +39,17 @@ const allEmplacements = Array.from(new Set(products.map(p => p.emplacement_stock
 const [newProduct, setNewProduct] = useState({
   nom: '',
   marque: '',
-  prix_reference: 0,  
+  prix_reference: undefined as any ,  
   image_url: '',
   categorie: 'makeup' as const,
-  quantite_reference: 100,
-  quantite_reelle: 100,
-  stock_unite: 0,
+  quantite_reference: undefined as any, // ✅ Vide par défaut
+  quantite_reelle: undefined as any,     // ✅ Vide par défaut
+  stock_unite: undefined as any,         // ✅ Vide par défaut
   emplacement_stock: '',
-  reduction: 50, // ✅ 50% par défaut
+  reduction: 50,
   description: ''
 });
+
 
 // 🚀 AJOUTEZ ICI LA FONCTION DE CALCUL DU PRIX RÉEL
 const calculateRealPrice = (
@@ -198,8 +199,25 @@ const calculateRealPrice = (
   };
 
 const handleAddProduct = async () => {
+  // ✅ Validation des champs obligatoires
   if (!newProduct.nom || !newProduct.marque) {
-    alert('Nom et marque requis');
+    alert('❌ Nom et marque requis');
+    return;
+  }
+
+  // 🚀 NOUVELLE VALIDATION : Quantités obligatoires
+  if (!newProduct.quantite_reference || newProduct.quantite_reference <= 0) {
+    alert('❌ Veuillez saisir une quantité de référence valide');
+    return;
+  }
+
+  if (!newProduct.quantite_reelle || newProduct.quantite_reelle <= 0) {
+    alert('❌ Veuillez saisir une quantité réelle valide');
+    return;
+  }
+
+  if (newProduct.stock_unite === undefined || newProduct.stock_unite < 0) {
+    alert('❌ Veuillez saisir un stock (0 ou plus)');
     return;
   }
 
@@ -209,7 +227,7 @@ const handleAddProduct = async () => {
   try {
     const productToAdd = {
       ...newProduct,
-      image_url: previewImageUrl || newProduct.image_url, // 🚀 UTILISER previewImageUrl en priorité
+      image_url: previewImageUrl || newProduct.image_url,
       id: Date.now().toString()
     };
 
@@ -220,29 +238,30 @@ const handleAddProduct = async () => {
       await onReloadProducts();
     }
 
+    // ✅ Réinitialiser avec valeurs vides
     setNewProduct({
-  nom: '',
-  marque: '',
-  prix_reference: 0,  
-  image_url: '',
-  categorie: 'makeup',
-  quantite_reference: 100,
-  quantite_reelle: 100,
-  stock_unite: 0,
-  emplacement_stock: '',
-  reduction: 50, // ✅ Réinitialiser à 50%
-  description: ''
-});
-
+      nom: '',
+      marque: '',
+      prix_reference: undefined as any,
+      reduction: 50,
+      image_url: '',
+      categorie: 'makeup',
+      quantite_reference: undefined as any, // ✅ Vide après ajout
+      quantite_reelle: undefined as any,     // ✅ Vide après ajout
+      stock_unite: undefined as any,         // ✅ Vide après ajout
+      emplacement_stock: '',
+      description: ''
+    });
     
-    setPreviewImageUrl(''); // 🚀 Réinitialiser le preview
+    setPreviewImageUrl('');
 
-    alert('Produit ajouté avec succès !');
+    alert('✅ Produit ajouté avec succès !');
   } catch (error) {
     console.error('Erreur ajout produit:', error);
-    alert('Erreur lors de l\'ajout du produit dans Supabase');
+    alert('❌ Erreur lors de l\'ajout du produit dans Supabase');
   }
 };
+
 
 const handleUpdateProduct = async () => {
   if (!editingProduct) return;
