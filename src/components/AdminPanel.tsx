@@ -791,15 +791,16 @@ const handleCreateVariantGroup = async (selectedProducts: Product[]) => {
                         </div>
                       </div>
                       <div className="flex gap-1 md:gap-2 flex-shrink-0">
-                        <button
-                          onClick={() => {
-                            setEditingProduct(product);
-                            setPreviewImageUrl(''); // ✅ Réinitialiser le preview quand on passe en édition
-                          }}
-                          className="px-2 py-1 md:px-3 md:py-1 bg-blue-500 text-white rounded hover:bg-blue-600 text-xs"
-                        >
-                          ✏️
-                        </button>
+                       <button
+  onClick={() => {
+    setEditingProduct(product);
+    setPreviewImageUrl(product.image_url || ''); // 🚀 Initialiser le preview avec l'image existante
+  }}
+  className="px-2 py-1 md:px-3 md:py-1 bg-blue-500 text-white rounded hover:bg-blue-600 text-xs"
+>
+  ✏️
+</button>
+
                         <button
                           onClick={() => handleDeleteProduct(product.id)}
                           className="px-2 py-1 md:px-3 md:py-1 bg-red-500 text-white rounded hover:bg-red-600 text-xs"
