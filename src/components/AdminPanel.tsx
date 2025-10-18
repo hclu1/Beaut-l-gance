@@ -226,24 +226,35 @@ const handleUpdateProduct = async () => {
   if (!editingProduct) return;
 
   try {
-    // 🚀 CORRECTION: Passer l'ID en premier paramètre, puis les updates
+    // 🚀 Construction des updates avec l'image du preview
     const updates = {
-      ...editingProduct,
-      image_url: previewImageUrl || editingProduct.image_url // Utiliser le preview si disponible
+      nom: editingProduct.nom,
+      marque: editingProduct.marque,
+      prix_reference: editingProduct.prix_reference,
+      reduction: editingProduct.reduction,
+      image_url: previewImageUrl || editingProduct.image_url,
+      categorie: editingProduct.categorie,
+      quantite_reference: editingProduct.quantite_reference,
+      quantite_reelle: editingProduct.quantite_reelle,
+      stock_unite: editingProduct.stock_unite,
+      emplacement_stock: editingProduct.emplacement_stock,
+      description: editingProduct.description
     };
     
+    // 🚨 CRITIQUE : ID EN PREMIER, UPDATES EN SECOND
+    console.log('🔧 Appel updateProduct avec ID:', editingProduct.id);
     await ProductService.updateProduct(editingProduct.id, updates);
-    console.log('Produit mis à jour dans Supabase');
+    console.log('✅ Produit mis à jour dans Supabase');
 
     if (onReloadProducts) {
       await onReloadProducts();
     }
 
     setEditingProduct(null);
-    setPreviewImageUrl(''); // ✅ Réinitialiser le preview
+    setPreviewImageUrl('');
     alert('Produit mis à jour avec succès !');
   } catch (error) {
-    console.error('Erreur mise à jour produit:', error);
+    console.error('❌ Erreur mise à jour produit:', error);
     alert('Erreur lors de la mise à jour du produit dans Supabase');
   }
 };
