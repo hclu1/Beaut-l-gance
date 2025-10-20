@@ -1005,7 +1005,7 @@ const handleCreateVariantGroup = async (selectedProducts: Product[]) => {
                 </div>
               )}
             </div>
-          )}
+          
 
           {activeTab === 'orders' && (
             <div className="space-y-4">
