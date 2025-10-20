@@ -31,50 +31,44 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
   const [similarProducts, setSimilarProducts] = useState<Product[]>([]);
 
   // États pour le filtre de marque/emplacement combiné
- const [selectedBrandOrEmplacement, setSelectedBrandOrEmplacement] = useState<string>('all');
+  const [selectedBrandOrEmplacement, setSelectedBrandOrEmplacement] = useState<string>('all');
 
-const allBrands = Array.from(new Set(products.map(p => p.marque))).sort();
-const allEmplacements = Array.from(new Set(products.map(p => p.emplacement_stock).filter(e => e))).sort();
+  const allBrands = Array.from(new Set(products.map(p => p.marque))).sort();
+  const allEmplacements = Array.from(new Set(products.map(p => p.emplacement_stock).filter(e => e))).sort();
 
-const [newProduct, setNewProduct] = useState({
-  nom: '',
-  marque: '',
-  prix_reference: undefined as any ,  
-  image_url: '',
-  categorie: 'makeup' as const,
-  quantite_reference: undefined as any, // ✅ Vide par défaut
-  quantite_reelle: undefined as any,     // ✅ Vide par défaut
-  stock_unite: undefined as any,         // ✅ Vide par défaut
-  emplacement_stock: '',
-  reduction: 50,
-  description: ''
-});
+  const [newProduct, setNewProduct] = useState({
+    nom: '',
+    marque: '',
+    prix_reference: undefined as any,  
+    image_url: '',
+    categorie: 'makeup' as const,
+    quantite_reference: undefined as any,
+    quantite_reelle: undefined as any,
+    stock_unite: undefined as any,
+    emplacement_stock: '',
+    reduction: 50,
+    description: ''
+  });
 
-
-// 🚀 AJOUTEZ ICI LA FONCTION DE CALCUL DU PRIX RÉEL
-const calculateRealPrice = (
-  prixReference: number,
-  quantiteReference: number,
-  quantiteReelle: number,
-  reduction: number
-): number => {
-  if (!quantiteReference || quantiteReference === 0) return 0;
-  
-  // Prix au ml = prix_reference / quantite_reference
-  const prixParMl = prixReference / quantiteReference;
-  
-  // Prix brut = prix au ml × quantité réelle
-  const prixBrut = prixParMl * quantiteReelle;
-  
-  // Appliquer la réduction
-  const prixFinal = prixBrut * (1 - reduction / 100);
-  
-  return parseFloat(prixFinal.toFixed(2));
-};
+  // Fonction de calcul du prix réel
+  const calculateRealPrice = (
+    prixReference: number,
+    quantiteReference: number,
+    quantiteReelle: number,
+    reduction: number
+  ): number => {
+    if (!quantiteReference || quantiteReference === 0) return 0;
+    
+    const prixParMl = prixReference / quantiteReference;
+    const prixBrut = prixParMl * quantiteReelle;
+    const prixFinal = prixBrut * (1 - reduction / 100);
+    
+    return parseFloat(prixFinal.toFixed(2));
+  };
 
   const currentProduct = editingProduct || newProduct;
 
-  // 🖼️ Fonction de compression d'image
+  // Fonction de compression d'image
   const compressImage = (file: File, maxWidth: number, quality: number): Promise<File> => {
     return new Promise((resolve, reject) => {
       const reader = new FileReader();
@@ -134,42 +128,41 @@ const calculateRealPrice = (
 
   // Upload d'image avec compression
   const handleImageUpload = async (file: File, isEditing = false) => {
-  if (!file) return;
+    if (!file) return;
 
-  if (!file.type.startsWith('image/')) {
-    alert('Veuillez sélectionner un fichier image');
-    return;
-  }
-
-  try {
-    setUploadingImage(true);
-    console.log(`📤 Fichier original: ${file.name} - ${(file.size / 1024 / 1024).toFixed(2)} MB`);
-    
-    const compressedFile = await compressImage(file, 800, 0.8);
-    console.log(`✅ Fichier compressé: ${compressedFile.name} - ${(compressedFile.size / 1024 / 1024).toFixed(2)} MB`);
-    
-    const imageUrl = await ProductService.uploadImage(compressedFile);
-    console.log(`🎯 URL récupérée:`, imageUrl);
-    
-    // 🚀 CRITIQUE : Mettre à jour le preview immédiatement
-    setPreviewImageUrl(imageUrl);
-    
-    if (isEditing && editingProduct) {
-      console.log('📝 Mode édition - Mise à jour editingProduct');
-      setEditingProduct({...editingProduct, image_url: imageUrl});
-    } else {
-      console.log('➕ Mode ajout - Mise à jour newProduct');
-      setNewProduct(prev => ({...prev, image_url: imageUrl}));
+    if (!file.type.startsWith('image/')) {
+      alert('Veuillez sélectionner un fichier image');
+      return;
     }
 
-    alert(`✅ Image uploadée avec succès !`);
-  } catch (error) {
-    console.error('❌ Erreur:', error);
-    alert('Erreur lors de l\'upload de l\'image');
-  } finally {
-    setUploadingImage(false);
-  }
-};
+    try {
+      setUploadingImage(true);
+      console.log(`📤 Fichier original: ${file.name} - ${(file.size / 1024 / 1024).toFixed(2)} MB`);
+      
+      const compressedFile = await compressImage(file, 800, 0.8);
+      console.log(`✅ Fichier compressé: ${compressedFile.name} - ${(compressedFile.size / 1024 / 1024).toFixed(2)} MB`);
+      
+      const imageUrl = await ProductService.uploadImage(compressedFile);
+      console.log(`🎯 URL récupérée:`, imageUrl);
+      
+      setPreviewImageUrl(imageUrl);
+      
+      if (isEditing && editingProduct) {
+        console.log('📝 Mode édition - Mise à jour editingProduct');
+        setEditingProduct({...editingProduct, image_url: imageUrl});
+      } else {
+        console.log('➕ Mode ajout - Mise à jour newProduct');
+        setNewProduct(prev => ({...prev, image_url: imageUrl}));
+      }
+
+      alert(`✅ Image uploadée avec succès !`);
+    } catch (error) {
+      console.error('❌ Erreur:', error);
+      alert('Erreur lors de l\'upload de l\'image');
+    } finally {
+      setUploadingImage(false);
+    }
+  };
 
   // Vérifier les doublons
   const checkForDuplicates = async () => {
@@ -198,47 +191,69 @@ const calculateRealPrice = (
     }
   };
 
-const handleAddProduct = async () => {
-  // ✅ Validation des champs obligatoires
-  if (!newProduct.nom || !newProduct.marque) {
-    alert('❌ Nom et marque requis');
-    return;
-  }
-
-  // 🚀 Validation : Quantités obligatoires
-  if (!newProduct.quantite_reference || newProduct.quantite_reference <= 0) {
-    alert('❌ Veuillez saisir une quantité de référence valide');
-    return;
-  }
-
-  if (!newProduct.quantite_reelle || newProduct.quantite_reelle <= 0) {
-    alert('❌ Veuillez saisir une quantité réelle valide');
-    return;
-  }
-
-  if (newProduct.stock_unite === undefined || newProduct.stock_unite < 0) {
-    alert('❌ Veuillez saisir un stock (0 ou plus)');
-    return;
-  }
-
-  const duplicatesConfirmed = await checkForDuplicates();
-  if (!duplicatesConfirmed) return;
-
-  try {
-    const productToAdd = {
-      ...newProduct,
-      image_url: previewImageUrl || newProduct.image_url,
-      id: Date.now().toString()
-    };
-
-    await ProductService.addProduct(productToAdd);
-    console.log('Produit ajouté dans Supabase');
-
-    if (onReloadProducts) {
-      await onReloadProducts();
+  const handleAddProduct = async () => {
+    if (!newProduct.nom || !newProduct.marque) {
+      alert('❌ Nom et marque requis');
+      return;
     }
 
-    // 🚀 VIDER LES CHAMPS EN PREMIER (avant l'alerte)
+    if (!newProduct.quantite_reference || newProduct.quantite_reference <= 0) {
+      alert('❌ Veuillez saisir une quantité de référence valide');
+      return;
+    }
+
+    if (!newProduct.quantite_reelle || newProduct.quantite_reelle <= 0) {
+      alert('❌ Veuillez saisir une quantité réelle valide');
+      return;
+    }
+
+    if (newProduct.stock_unite === undefined || newProduct.stock_unite < 0) {
+      alert('❌ Veuillez saisir un stock (0 ou plus)');
+      return;
+    }
+
+    const duplicatesConfirmed = await checkForDuplicates();
+    if (!duplicatesConfirmed) return;
+
+    try {
+      const productToAdd = {
+        ...newProduct,
+        image_url: previewImageUrl || newProduct.image_url,
+        id: Date.now().toString()
+      };
+
+      await ProductService.addProduct(productToAdd);
+      console.log('Produit ajouté dans Supabase');
+
+      if (onReloadProducts) {
+        await onReloadProducts();
+      }
+
+      setNewProduct({
+        nom: '',
+        marque: '',
+        prix_reference: undefined as any,
+        reduction: 50,
+        image_url: '',
+        categorie: 'makeup',
+        quantite_reference: undefined as any,
+        quantite_reelle: undefined as any,
+        stock_unite: undefined as any,
+        emplacement_stock: '',
+        description: ''
+      });
+      
+      setPreviewImageUrl('');
+
+      alert('✅ Produit ajouté avec succès !');
+      
+    } catch (error) {
+      console.error('Erreur ajout produit:', error);
+      alert('❌ Erreur lors de l\'ajout du produit dans Supabase');
+    }
+  };
+
+  const handleAnnulerAjout = () => {
     setNewProduct({
       nom: '',
       marque: '',
@@ -254,194 +269,161 @@ const handleAddProduct = async () => {
     });
     
     setPreviewImageUrl('');
-
-    // ✅ Alerte EN DERNIER (après avoir vidé)
-    alert('✅ Produit ajouté avec succès !');
     
-  } catch (error) {
-    console.error('Erreur ajout produit:', error);
-    alert('❌ Erreur lors de l\'ajout du produit dans Supabase');
-  }
-};
+    alert('📝 Formulaire réinitialisé');
+  };
 
-// 🆕 Fonction pour annuler et vider le formulaire
-const handleAnnulerAjout = () => {
-  setNewProduct({
-    nom: '',
-    marque: '',
-    prix_reference: undefined as any,
-    reduction: 50,
-    image_url: '',
-    categorie: 'makeup',
-    quantite_reference: undefined as any,
-    quantite_reelle: undefined as any,
-    stock_unite: undefined as any,
-    emplacement_stock: '',
-    description: ''
-  });
-  
-  setPreviewImageUrl('');
-  
-  alert('📝 Formulaire réinitialisé');
-};
+  const handleUpdateProduct = async () => {
+    if (!editingProduct) return;
 
+    try {
+      const updates = {
+        nom: editingProduct.nom,
+        marque: editingProduct.marque,
+        prix_reference: editingProduct.prix_reference,
+        reduction: editingProduct.reduction,
+        image_url: previewImageUrl || editingProduct.image_url,
+        categorie: editingProduct.categorie,
+        quantite_reference: editingProduct.quantite_reference,
+        quantite_reelle: editingProduct.quantite_reelle,
+        stock_unite: editingProduct.stock_unite,
+        emplacement_stock: editingProduct.emplacement_stock,
+        description: editingProduct.description
+      };
+      
+      console.log('🔧 Appel updateProduct avec ID:', editingProduct.id);
+      await ProductService.updateProduct(editingProduct.id, updates);
+      console.log('✅ Produit mis à jour dans Supabase');
 
-const handleUpdateProduct = async () => {
-  if (!editingProduct) return;
+      if (onReloadProducts) {
+        await onReloadProducts();
+      }
 
-  try {
-    // 🚀 Construction des updates avec l'image du preview
-    const updates = {
-      nom: editingProduct.nom,
-      marque: editingProduct.marque,
-      prix_reference: editingProduct.prix_reference,
-      reduction: editingProduct.reduction,
-      image_url: previewImageUrl || editingProduct.image_url,
-      categorie: editingProduct.categorie,
-      quantite_reference: editingProduct.quantite_reference,
-      quantite_reelle: editingProduct.quantite_reelle,
-      stock_unite: editingProduct.stock_unite,
-      emplacement_stock: editingProduct.emplacement_stock,
-      description: editingProduct.description
-    };
-    
-    // 🚨 CRITIQUE : ID EN PREMIER, UPDATES EN SECOND
-    console.log('🔧 Appel updateProduct avec ID:', editingProduct.id);
-    await ProductService.updateProduct(editingProduct.id, updates);
-    console.log('✅ Produit mis à jour dans Supabase');
+      setEditingProduct(null);
+      setPreviewImageUrl('');
+      alert('Produit mis à jour avec succès !');
+    } catch (error) {
+      console.error('❌ Erreur mise à jour produit:', error);
+      alert('Erreur lors de la mise à jour du produit dans Supabase');
+    }
+  };
 
-    if (onReloadProducts) {
-      await onReloadProducts();
+  const handleDeleteProduct = async (id: string) => {
+    if (!confirm('Supprimer ce produit ?')) return;
+
+    try {
+      const numericId = typeof id === 'string' ? parseInt(id, 10) : id;
+      await ProductService.deleteProduct(numericId);
+      console.log('Produit supprimé de Supabase');
+
+      if (onReloadProducts) {
+        await onReloadProducts();
+      }
+
+      alert('Produit supprimé avec succès !');
+    } catch (error) {
+      console.error('Erreur suppression produit:', error);
+      alert('Erreur lors de la suppression du produit de Supabase');
+    }
+  };
+
+  const handleOrderStatusChange = async (orderId: string, newStatus: string) => {
+    const updatedOrders = orders.map(o =>
+      o.id === orderId ? { ...o, status: newStatus } : o
+    );
+    setOrders(updatedOrders);
+
+    try {
+      await ProductService.updateOrderStatus(orderId, newStatus);
+    } catch (error) {
+      console.error('Erreur mise à jour statut:', error);
+    }
+  };
+
+  const handleDeleteOrder = async (orderId: string) => {
+    if (!confirm('Supprimer cette commande ?')) return;
+
+    try {
+      await ProductService.deleteOrder(orderId);
+      setOrders(orders.filter(o => o.id !== orderId));
+      alert('Commande supprimée avec succès !');
+    } catch (error) {
+      console.error('Erreur suppression commande:', error);
+      alert('Erreur lors de la suppression de la commande');
+    }
+  };
+
+  const togglePreparedItem = async (orderId: string, productId: string) => {
+    const order = orders.find(o => o.id === orderId);
+    if (!order) return;
+
+    const newPreparedItems = { ...order.preparedItems };
+    newPreparedItems[productId] = !newPreparedItems[productId];
+
+    const updatedOrders = orders.map(o =>
+      o.id === orderId ? { ...o, preparedItems: newPreparedItems } : o
+    );
+
+    setOrders(updatedOrders);
+
+    try {
+      await ProductService.updateOrderPreparedItems(orderId, newPreparedItems);
+    } catch (error) {
+      console.error('Erreur mise à jour items préparés:', error);
+    }
+  };
+
+  const allItemsPrepared = (order: Order) => {
+    return order.items.every(item => order.preparedItems?.[item.id] === true);
+  };
+
+  const handleFindSimilarProducts = (product: Product) => {
+    const similar = products.filter(p => 
+      p.id !== product.id &&
+      p.nom.toLowerCase() === product.nom.toLowerCase() &&
+      p.marque.toLowerCase() === product.marque.toLowerCase()
+    );
+
+    if (similar.length === 0) {
+      alert('Aucun produit similaire trouvé pour créer une variante');
+      return;
     }
 
-    setEditingProduct(null);
-    setPreviewImageUrl('');
-    alert('Produit mis à jour avec succès !');
-  } catch (error) {
-    console.error('❌ Erreur mise à jour produit:', error);
-    alert('Erreur lors de la mise à jour du produit dans Supabase');
-  }
-};
+    setVariantBaseProduct(product);
+    setSimilarProducts(similar);
+    setAddingVariant(true);
+  };
 
-const handleDeleteProduct = async (id: string) => {
-  if (!confirm('Supprimer ce produit ?')) return;
-
-  try {
-    // 🚀 CORRECTION: Convertir l'ID en nombre si nécessaire
-    const numericId = typeof id === 'string' ? parseInt(id, 10) : id;
-    await ProductService.deleteProduct(numericId);
-    console.log('Produit supprimé de Supabase');
-
-    if (onReloadProducts) {
-      await onReloadProducts();
+  const handleCreateVariantGroup = async (selectedProducts: Product[]) => {
+    if (selectedProducts.length < 2) {
+      alert('Sélectionnez au moins 2 produits pour créer un groupe de variantes');
+      return;
     }
 
-    alert('Produit supprimé avec succès !');
-  } catch (error) {
-    console.error('Erreur suppression produit:', error);
-    alert('Erreur lors de la suppression du produit de Supabase');
-  }
-};
+    const variantId = `variant_${Date.now()}`;
 
-const handleOrderStatusChange = async (orderId: string, newStatus: string) => {
-  const updatedOrders = orders.map(o =>
-    o.id === orderId ? { ...o, status: newStatus } : o
-  );
-  setOrders(updatedOrders);
+    try {
+      for (const product of selectedProducts) {
+        await ProductService.updateProduct(product.id, {
+          ...product,
+          variant_id: variantId
+        });
+      }
 
-  try {
-    await ProductService.updateOrderStatus(orderId, newStatus);
-  } catch (error) {
-    console.error('Erreur mise à jour statut:', error);
-  }
-};
+      if (onReloadProducts) {
+        await onReloadProducts();
+      }
 
-const handleDeleteOrder = async (orderId: string) => {
-  if (!confirm('Supprimer cette commande ?')) return;
+      setAddingVariant(false);
+      setVariantBaseProduct(null);
+      setSimilarProducts([]);
 
-  try {
-    await ProductService.deleteOrder(orderId);
-    setOrders(orders.filter(o => o.id !== orderId));
-    alert('Commande supprimée avec succès !');
-  } catch (error) {
-    console.error('Erreur suppression commande:', error);
-    alert('Erreur lors de la suppression de la commande');
-  }
-};
-
-const togglePreparedItem = async (orderId: string, productId: string) => {
-  const order = orders.find(o => o.id === orderId);
-  if (!order) return;
-
-  const newPreparedItems = { ...order.preparedItems };
-  newPreparedItems[productId] = !newPreparedItems[productId];
-
-  const updatedOrders = orders.map(o =>
-    o.id === orderId ? { ...o, preparedItems: newPreparedItems } : o
-  );
-
-  setOrders(updatedOrders);
-
-  try {
-    await ProductService.updateOrderPreparedItems(orderId, newPreparedItems);
-  } catch (error) {
-    console.error('Erreur mise à jour items préparés:', error);
-  }
-};
-
-const allItemsPrepared = (order: Order) => {
-  return order.items.every(item => order.preparedItems?.[item.id] === true);
-};
-
-const handleFindSimilarProducts = (product: Product) => {
-  const similar = products.filter(p => 
-    p.id !== product.id &&
-    p.nom.toLowerCase() === product.nom.toLowerCase() &&
-    p.marque.toLowerCase() === product.marque.toLowerCase()
-  );
-
-  if (similar.length === 0) {
-    alert('Aucun produit similaire trouvé pour créer une variante');
-    return;
-  }
-
-  setVariantBaseProduct(product);
-  setSimilarProducts(similar);
-  setAddingVariant(true);
-};
-
-const handleCreateVariantGroup = async (selectedProducts: Product[]) => {
-  if (selectedProducts.length < 2) {
-    alert('Sélectionnez au moins 2 produits pour créer un groupe de variantes');
-    return;
-  }
-
-  const variantId = `variant_${Date.now()}`;
-
-  try {
-    for (const product of selectedProducts) {
-      // 🚀 CORRECTION: Passer l'ID, puis les updates
-      await ProductService.updateProduct(product.id, {
-        ...product,
-        variant_id: variantId
-      });
+      alert(`✅ Groupe de variantes créé avec succès ! (${selectedProducts.length} produits liés)`);
+    } catch (error) {
+      console.error('Erreur création groupe variantes:', error);
+      alert('Erreur lors de la création du groupe de variantes');
     }
-
-    if (onReloadProducts) {
-      await onReloadProducts();
-    }
-
-    setAddingVariant(false);
-    setVariantBaseProduct(null);
-    setSimilarProducts([]);
-
-    alert(`✅ Groupe de variantes créé avec succès ! (${selectedProducts.length} produits liés)`);
-  } catch (error) {
-    console.error('Erreur création groupe variantes:', error);
-    alert('Erreur lors de la création du groupe de variantes');
-  }
-};
-
+  };
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-50 p-2 md:p-4 overflow-y-auto">
@@ -510,82 +492,71 @@ const handleCreateVariantGroup = async (selectedProducts: Product[]) => {
                 </h3>
 
                 <div className="space-y-4">
-                  {/* Section image avec logique simplifiée */}
-            <div>
-  <label className="block text-sm font-medium text-gray-700 mb-2">
-    Image du produit 
-    <span className="text-xs text-green-600 ml-2">✨ Optimisation automatique WebP</span>
-  </label>
-  
-  <div className="border-2 border-dashed border-gray-300 rounded-lg p-4 text-center">
-    {(() => {
-      // 🔍 DEBUG
-      console.log('🖼️ États image:', {
-        previewImageUrl,
-        editingImage: editingProduct?.image_url,
-        newProductImage: newProduct.image_url
-      });
-      
-      const imageToShow = previewImageUrl || editingProduct?.image_url || newProduct.image_url;
-      
-      return imageToShow ? (
-        <div className="space-y-2">
-          <img 
-            src={imageToShow} 
-            alt="Aperçu" 
-            className="w-32 h-32 object-cover rounded border mx-auto"
-            onLoad={() => console.log('✅ Image chargée:', imageToShow)}
-            onError={(e) => console.error('❌ Erreur image:', imageToShow)}
-          />
-          <button
-            type="button"
-            onClick={() => {
-              setPreviewImageUrl('');
-              if (editingProduct) {
-                setEditingProduct({...editingProduct, image_url: ''});
-              } else {
-                setNewProduct({...newProduct, image_url: ''});
-              }
-            }}
-            className="text-red-500 text-sm hover:underline"
-          >
-            Supprimer l'image
-          </button>
-        </div>
-      ) : (
-        <div className="space-y-2">
-          <div className="text-gray-400 text-4xl">📸</div>
-          <p className="text-gray-500">Cliquez pour ajouter une image</p>
-          <p className="text-xs text-green-600">
-            L'image sera automatiquement optimisée et convertie en WebP
-          </p>
-        </div>
-      );
-    })()}
-    
-    <input
-      type="file"
-      accept="image/*"
-      onChange={async (e) => {
-        const file = e.target.files?.[0];
-        if (file) {
-          await handleImageUpload(file, !!editingProduct);
-          e.target.value = '';
-        }
-      }}
-      className="mt-2 block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded file:border-0 file:text-sm file:font-semibold file:bg-purple-50 file:text-purple-700 hover:file:bg-purple-100"
-      disabled={uploadingImage}
-    />
-    
-    {uploadingImage && (
-      <p className="text-purple-600 text-sm mt-2">
-        🔄 Optimisation et upload en cours...
-      </p>
-    )}
-  </div>
-</div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Image du produit 
+                      <span className="text-xs text-green-600 ml-2">✨ Optimisation automatique WebP</span>
+                    </label>
+                    
+                    <div className="border-2 border-dashed border-gray-300 rounded-lg p-4 text-center">
+                      {(() => {
+                        const imageToShow = previewImageUrl || editingProduct?.image_url || newProduct.image_url;
+                        
+                        return imageToShow ? (
+                          <div className="space-y-2">
+                            <img 
+                              src={imageToShow} 
+                              alt="Aperçu" 
+                              className="w-32 h-32 object-cover rounded border mx-auto"
+                            />
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setPreviewImageUrl('');
+                                if (editingProduct) {
+                                  setEditingProduct({...editingProduct, image_url: ''});
+                                } else {
+                                  setNewProduct({...newProduct, image_url: ''});
+                                }
+                              }}
+                              className="text-red-500 text-sm hover:underline"
+                            >
+                              Supprimer l&apos;image
+                            </button>
+                          </div>
+                        ) : (
+                          <div className="space-y-2">
+                            <div className="text-gray-400 text-4xl">📸</div>
+                            <p className="text-gray-500">Cliquez pour ajouter une image</p>
+                            <p className="text-xs text-green-600">
+                              L&apos;image sera automatiquement optimisée et convertie en WebP
+                            </p>
+                          </div>
+                        );
+                      })()}
+                      
+                      <input
+                        type="file"
+                        accept="image/*"
+                        onChange={async (e) => {
+                          const file = e.target.files?.[0];
+                          if (file) {
+                            await handleImageUpload(file, !!editingProduct);
+                            e.target.value = '';
+                          }
+                        }}
+                        className="mt-2 block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded file:border-0 file:text-sm file:font-semibold file:bg-purple-50 file:text-purple-700 hover:file:bg-purple-100"
+                        disabled={uploadingImage}
+                      />
+                      
+                      {uploadingImage && (
+                        <p className="text-purple-600 text-sm mt-2">
+                          🔄 Optimisation et upload en cours...
+                        </p>
+                      )}
+                    </div>
+                  </div>
 
-                      {/* Champs du formulaire */}
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div>
                       <label className="block text-sm font-medium text-gray-700">Nom</label>
@@ -604,7 +575,7 @@ const handleCreateVariantGroup = async (selectedProducts: Product[]) => {
                       />
                     </div>
 
-                   <div>
+                    <div>
                       <label className="block text-sm font-medium text-gray-700">Marque</label>
                       <div className="flex gap-2">
                         <select
@@ -626,7 +597,6 @@ const handleCreateVariantGroup = async (selectedProducts: Product[]) => {
                           <option value="__custom__">+ Ajouter une nouvelle marque</option>
                         </select>
                         
-                        {/* Input pour nouvelle marque */}
                         {((editingProduct?.marque === '__custom__') || (newProduct.marque === '__custom__')) && (
                           <input
                             type="text"
@@ -723,7 +693,6 @@ const handleCreateVariantGroup = async (selectedProducts: Product[]) => {
                     </div>
                   </div>
 
-                  {/* 🚀 PRIX CALCULÉ EN TEMPS RÉEL */}
                   <div className="bg-gradient-to-r from-green-50 to-emerald-50 p-4 rounded-lg border-2 border-green-300 shadow-sm my-4">
                     <div className="flex items-center justify-between">
                       <div>
@@ -757,7 +726,6 @@ const handleCreateVariantGroup = async (selectedProducts: Product[]) => {
                     </div>
                   </div>
 
-                  {/* Suite du formulaire */}
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div>
                       <label className="block text-sm font-medium text-gray-700">Quantité réelle (ml)</label>
@@ -831,49 +799,49 @@ const handleCreateVariantGroup = async (selectedProducts: Product[]) => {
                   </div>
                 </div>
 
-              <div className="flex gap-2 mt-4">
-  {editingProduct ? (
-    <>
-      <button
-        onClick={handleUpdateProduct}
-        className="px-4 py-2 md:px-6 md:py-2 bg-orange-500 text-white rounded hover:bg-orange-600 text-sm md:text-base"
-      >
-        Modifier
-      </button>
-      <button
-        onClick={() => {
-          setEditingProduct(null);
-          setPreviewImageUrl('');
-        }}
-        className="px-4 py-2 md:px-6 md:py-2 bg-gray-500 text-white rounded hover:bg-gray-600 text-sm md:text-base"
-      >
-        Annuler
-      </button>
-    </>
-  ) : (
-    <>
-      <button
-        onClick={handleAddProduct}
-        className="px-4 py-2 md:px-6 md:py-2 bg-green-500 text-white rounded hover:bg-green-600 text-sm md:text-base"
-      >
-        ✅ Ajouter
-      </button>
-      <button
-        onClick={handleAnnulerAjout}
-        className="px-4 py-2 md:px-6 md:py-2 bg-red-500 text-white rounded hover:bg-red-600 text-sm md:text-base"
-      >
-        ❌ Annuler
-      </button>
-      <button
-        onClick={checkForDuplicates}
-        className="px-4 py-2 md:px-6 md:py-2 bg-blue-500 text-white rounded hover:bg-blue-600 text-sm md:text-base"
-      >
-        🔍 Vérifier doublons
-      </button>
-    </>
-  )}
-</div>
-
+                <div className="flex gap-2 mt-4">
+                  {editingProduct ? (
+                    <>
+                      <button
+                        onClick={handleUpdateProduct}
+                        className="px-4 py-2 md:px-6 md:py-2 bg-orange-500 text-white rounded hover:bg-orange-600 text-sm md:text-base"
+                      >
+                        Modifier
+                      </button>
+                      <button
+                        onClick={() => {
+                          setEditingProduct(null);
+                          setPreviewImageUrl('');
+                        }}
+                        className="px-4 py-2 md:px-6 md:py-2 bg-gray-500 text-white rounded hover:bg-gray-600 text-sm md:text-base"
+                      >
+                        Annuler
+                      </button>
+                    </>
+                  ) : (
+                    <>
+                      <button
+                        onClick={handleAddProduct}
+                        className="px-4 py-2 md:px-6 md:py-2 bg-green-500 text-white rounded hover:bg-green-600 text-sm md:text-base"
+                      >
+                        ✅ Ajouter
+                      </button>
+                      <button
+                        onClick={handleAnnulerAjout}
+                        className="px-4 py-2 md:px-6 md:py-2 bg-red-500 text-white rounded hover:bg-red-600 text-sm md:text-base"
+                      >
+                        ❌ Annuler
+                      </button>
+                      <button
+                        onClick={checkForDuplicates}
+                        className="px-4 py-2 md:px-6 md:py-2 bg-blue-500 text-white rounded hover:bg-blue-600 text-sm md:text-base"
+                      >
+                        🔍 Vérifier doublons
+                      </button>
+                    </>
+                  )}
+                </div>
+              </div>
 
               <div className="mb-4 flex flex-wrap gap-2">
                 <select
@@ -922,16 +890,15 @@ const handleCreateVariantGroup = async (selectedProducts: Product[]) => {
                         </div>
                       </div>
                       <div className="flex gap-1 md:gap-2 flex-shrink-0">
-                       <button
-  onClick={() => {
-    setEditingProduct(product);
-    setPreviewImageUrl(product.image_url || ''); // 🚀 Initialiser le preview avec l'image existante
-  }}
-  className="px-2 py-1 md:px-3 md:py-1 bg-blue-500 text-white rounded hover:bg-blue-600 text-xs"
->
-  ✏️
-</button>
-
+                        <button
+                          onClick={() => {
+                            setEditingProduct(product);
+                            setPreviewImageUrl(product.image_url || '');
+                          }}
+                          className="px-2 py-1 md:px-3 md:py-1 bg-blue-500 text-white rounded hover:bg-blue-600 text-xs"
+                        >
+                          ✏️
+                        </button>
                         <button
                           onClick={() => handleDeleteProduct(product.id)}
                           className="px-2 py-1 md:px-3 md:py-1 bg-red-500 text-white rounded hover:bg-red-600 text-xs"
@@ -953,7 +920,7 @@ const handleCreateVariantGroup = async (selectedProducts: Product[]) => {
                 <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
                   <div className="bg-white rounded-lg p-6 max-w-2xl w-full max-h-[80vh] overflow-y-auto">
                     <h3 className="text-xl font-bold mb-4">
-                      Créer un groupe de variantes pour "{variantBaseProduct.nom}"
+                      Créer un groupe de variantes pour &quot;{variantBaseProduct.nom}&quot;
                     </h3>
                     <p className="text-sm text-gray-600 mb-4">
                       Sélectionnez les produits à regrouper comme variantes :
@@ -1002,7 +969,7 @@ const handleCreateVariantGroup = async (selectedProducts: Product[]) => {
                       </button>
                     </div>
                   </div>
-                
+                </div>
               )}
             </div>
           )}
