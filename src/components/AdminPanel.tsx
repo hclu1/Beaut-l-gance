@@ -205,7 +205,7 @@ const handleAddProduct = async () => {
     return;
   }
 
-  // 🚀 NOUVELLE VALIDATION : Quantités obligatoires
+  // 🚀 Validation : Quantités obligatoires
   if (!newProduct.quantite_reference || newProduct.quantite_reference <= 0) {
     alert('❌ Veuillez saisir une quantité de référence valide');
     return;
@@ -238,7 +238,7 @@ const handleAddProduct = async () => {
       await onReloadProducts();
     }
 
-    // ✅ Réinitialiser avec valeurs vides
+    // 🚀 VIDER LES CHAMPS EN PREMIER (avant l'alerte)
     setNewProduct({
       nom: '',
       marque: '',
@@ -246,20 +246,43 @@ const handleAddProduct = async () => {
       reduction: 50,
       image_url: '',
       categorie: 'makeup',
-      quantite_reference: undefined as any, // ✅ Vide après ajout
-      quantite_reelle: undefined as any,     // ✅ Vide après ajout
-      stock_unite: undefined as any,         // ✅ Vide après ajout
+      quantite_reference: undefined as any,
+      quantite_reelle: undefined as any,
+      stock_unite: undefined as any,
       emplacement_stock: '',
       description: ''
     });
     
     setPreviewImageUrl('');
 
+    // ✅ Alerte EN DERNIER (après avoir vidé)
     alert('✅ Produit ajouté avec succès !');
+    
   } catch (error) {
     console.error('Erreur ajout produit:', error);
     alert('❌ Erreur lors de l\'ajout du produit dans Supabase');
   }
+};
+
+// 🆕 Fonction pour annuler et vider le formulaire
+const handleAnnulerAjout = () => {
+  setNewProduct({
+    nom: '',
+    marque: '',
+    prix_reference: undefined as any,
+    reduction: 50,
+    image_url: '',
+    categorie: 'makeup',
+    quantite_reference: undefined as any,
+    quantite_reelle: undefined as any,
+    stock_unite: undefined as any,
+    emplacement_stock: '',
+    description: ''
+  });
+  
+  setPreviewImageUrl('');
+  
+  alert('📝 Formulaire réinitialisé');
 };
 
 
@@ -808,43 +831,48 @@ const handleCreateVariantGroup = async (selectedProducts: Product[]) => {
                   </div>
                 </div>
 
-                <div className="flex gap-2 mt-4">
-                  {editingProduct ? (
-                    <>
-                      <button
-                        onClick={handleUpdateProduct}
-                        className="px-4 py-2 md:px-6 md:py-2 bg-orange-500 text-white rounded hover:bg-orange-600 text-sm md:text-base"
-                      >
-                        Modifier
-                      </button>
-                      <button
-                        onClick={() => {
-                          setEditingProduct(null);
-                          setPreviewImageUrl('');
-                        }}
-                        className="px-4 py-2 md:px-6 md:py-2 bg-gray-500 text-white rounded hover:bg-gray-600 text-sm md:text-base"
-                      >
-                        Annuler
-                      </button>
-                    </>
-                  ) : (
-                    <>
-                      <button
-                        onClick={handleAddProduct}
-                        className="px-4 py-2 md:px-6 md:py-2 bg-green-500 text-white rounded hover:bg-green-600 text-sm md:text-base"
-                      >
-                        Ajouter
-                      </button>
-                      <button
-                        onClick={checkForDuplicates}
-                        className="px-4 py-2 md:px-6 md:py-2 bg-blue-500 text-white rounded hover:bg-blue-600 text-sm md:text-base"
-                      >
-                        🔍 Vérifier doublons
-                      </button>
-                    </>
-                  )}
-                </div>
-              </div>
+              <div className="flex gap-2 mt-4">
+  {editingProduct ? (
+    <>
+      <button
+        onClick={handleUpdateProduct}
+        className="px-4 py-2 md:px-6 md:py-2 bg-orange-500 text-white rounded hover:bg-orange-600 text-sm md:text-base"
+      >
+        Modifier
+      </button>
+      <button
+        onClick={() => {
+          setEditingProduct(null);
+          setPreviewImageUrl('');
+        }}
+        className="px-4 py-2 md:px-6 md:py-2 bg-gray-500 text-white rounded hover:bg-gray-600 text-sm md:text-base"
+      >
+        Annuler
+      </button>
+    </>
+  ) : (
+    <>
+      <button
+        onClick={handleAddProduct}
+        className="px-4 py-2 md:px-6 md:py-2 bg-green-500 text-white rounded hover:bg-green-600 text-sm md:text-base"
+      >
+        ✅ Ajouter
+      </button>
+      <button
+        onClick={handleAnnulerAjout}
+        className="px-4 py-2 md:px-6 md:py-2 bg-red-500 text-white rounded hover:bg-red-600 text-sm md:text-base"
+      >
+        ❌ Annuler
+      </button>
+      <button
+        onClick={checkForDuplicates}
+        className="px-4 py-2 md:px-6 md:py-2 bg-blue-500 text-white rounded hover:bg-blue-600 text-sm md:text-base"
+      >
+        🔍 Vérifier doublons
+      </button>
+    </>
+  )}
+</div>
 
 
               <div className="mb-4 flex flex-wrap gap-2">
