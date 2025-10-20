@@ -573,7 +573,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
                           if (editingProduct) {
                             setEditingProduct({...editingProduct, nom: e.target.value});
                           } else {
-                            setEditingProduct({...editingProduct, nom: e.target.value});
+                            setNewProduct({...newProduct, nom: e.target.value});
                           }
                         }}
                         className="w-full p-2 border rounded text-sm"
@@ -590,7 +590,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
                             if (editingProduct) {
                               setEditingProduct({...editingProduct, marque: value});
                             } else {
-                              setEditingProduct({...editingProduct, marque: value});
+                              setNewProduct({...newProduct, marque: value});
                             }
                           }}
                           className="flex-1 p-2 border rounded text-sm"
@@ -611,7 +611,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
                               if (editingProduct) {
                                 setEditingProduct({...editingProduct, marque: e.target.value});
                               } else {
-                                setEditingProduct({...editingProduct, marque: e.target.value});
+                                setNewProduct({...newProduct, marque: e.target.value});
                               }
                             }}
                             className="flex-1 p-2 border rounded text-sm border-green-500"
@@ -632,7 +632,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
                           if (editingProduct) {
                             setEditingProduct({...editingProduct, prix_reference: value as any});
                           } else {
-                            setEditingProduct({...editingProduct, prix_reference: value as any});
+                            setNewProduct({...newProduct, prix_reference: value as any});
                           }
                         }}
                         className="w-full p-2 border rounded text-sm"
@@ -778,7 +778,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
                           if (editingProduct) {
                             setEditingProduct({...editingProduct, emplacement_stock: e.target.value});
                           } else {
-                            setEditingProduct({...editingProduct, description: e.target.value});
+                            setNewProduct({...newProduct, emplacement_stock: e.target.value});
                           }
                         }}
                         className="w-full p-2 border rounded text-sm"
@@ -795,7 +795,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
                         if (editingProduct) {
                           setEditingProduct({...editingProduct, description: e.target.value});
                         } else {
-                          setEditingProduct({...editingProduct, description: e.target.value});
+                          setNewProduct({...newProduct, description: e.target.value});
                         }
                       }}
                       className="w-full p-2 border rounded text-sm"
