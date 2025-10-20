@@ -10,6 +10,7 @@ interface AdminPanelProps {
   onReloadProducts?: () => void;
   setAdmin: React.Dispatch<React.SetStateAction<boolean>>;
 }
+
 const AdminPanel: React.FC<AdminPanelProps> = ({ 
   products = [], 
   setProducts, 
@@ -21,7 +22,6 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
   const [editingProduct, setEditingProduct] = useState<Product | null>(null);
   const [uploadingImage, setUploadingImage] = useState(false);
   const [previewImageUrl, setPreviewImageUrl] = useState<string>('');
-
   const [activeTab, setActiveTab] = useState<'products' | 'orders'>('products');
   const [showQR, setShowQR] = useState(false);
   
@@ -30,7 +30,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
   const [variantBaseProduct, setVariantBaseProduct] = useState<Product | null>(null);
   const [similarProducts, setSimilarProducts] = useState<Product[]>([]);
 
-  // États pour le filtre de marque/emplacement combiné
+  // État pour le filtre de marque/emplacement combiné
   const [selectedBrandOrEmplacement, setSelectedBrandOrEmplacement] = useState<string>('all');
 
   const allBrands = Array.from(new Set(products.map(p => p.marque))).sort();
@@ -39,12 +39,12 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
   const [newProduct, setNewProduct] = useState({
     nom: '',
     marque: '',
-    prix_reference: undefined as any,  
+    prix_reference: 0,
     image_url: '',
     categorie: 'makeup' as const,
-    quantite_reference: undefined as any,
-    quantite_reelle: undefined as any,
-    stock_unite: undefined as any,
+    quantite_reference: 0,
+    quantite_reelle: 0,
+    stock_unite: 0,
     emplacement_stock: '',
     reduction: 50,
     description: ''
@@ -65,8 +65,6 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
     
     return parseFloat(prixFinal.toFixed(2));
   };
-
-  const currentProduct = editingProduct || newProduct;
 
   // Fonction de compression d'image
   const compressImage = (file: File, maxWidth: number, quality: number): Promise<File> => {
@@ -155,7 +153,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
         setNewProduct(prev => ({...prev, image_url: imageUrl}));
       }
 
-      alert(`✅ Image uploadée avec succès !`);
+      alert('✅ Image uploadée avec succès !');
     } catch (error) {
       console.error('❌ Erreur:', error);
       alert('Erreur lors de l\'upload de l\'image');
@@ -165,10 +163,10 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
   };
 
   // Vérifier les doublons
-  const checkForDuplicates = async () => {
+  const checkForDuplicates = async (): Promise<boolean> => {
     if (!newProduct.nom || !newProduct.marque) {
       alert('Veuillez entrer un nom et une marque pour vérifier les doublons');
-      return;
+      return false;
     }
 
     const searchTerm = `${newProduct.nom.toLowerCase()} ${newProduct.marque.toLowerCase()}`;
@@ -232,13 +230,13 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
       setNewProduct({
         nom: '',
         marque: '',
-        prix_reference: undefined as any,
+        prix_reference: 0,
         reduction: 50,
         image_url: '',
         categorie: 'makeup',
-        quantite_reference: undefined as any,
-        quantite_reelle: undefined as any,
-        stock_unite: undefined as any,
+        quantite_reference: 0,
+        quantite_reelle: 0,
+        stock_unite: 0,
         emplacement_stock: '',
         description: ''
       });
@@ -257,13 +255,13 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
     setNewProduct({
       nom: '',
       marque: '',
-      prix_reference: undefined as any,
+      prix_reference: 0,
       reduction: 50,
       image_url: '',
       categorie: 'makeup',
-      quantite_reference: undefined as any,
-      quantite_reelle: undefined as any,
-      stock_unite: undefined as any,
+      quantite_reference: 0,
+      quantite_reelle: 0,
+      stock_unite: 0,
       emplacement_stock: '',
       description: ''
     });
