@@ -39,16 +39,16 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
   const [newProduct, setNewProduct] = useState({
     nom: '',
     marque: '',
-    prix_reference: undefined as any,  
+    prix_reference:  '' as any,  // ✅ Chaîne vide
     image_url: '',
     categorie: 'makeup' as const,
-    quantite_reference: undefined as any,
-    quantite_reelle: undefined as any,
-    stock_unite: undefined as any,
-    emplacement_stock: '',
+    quantite_reference: '' as any,  // ✅ Chaîne vide
+    quantite_reelle: '' as any,  // ✅ Chaîne vide
+    stock_unite: '' as any,  // ✅ Chaîne vide
+    emplacement_stock: '' as any,  // ✅ Chaîne vide
     reduction: 50,
     description: ''
-  });
+  } as any);
 
   // Fonction de calcul du prix réel
   const calculateRealPrice = (
@@ -197,12 +197,12 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
       return;
     }
 
-    if (!newProduct.quantite_reference || newProduct.quantite_reference <= 0) {
+    if (!newProduct.quantite_reference || newProduct.quantite_reference === '' || newProduct.quantite_reference <= 0) {
       alert('❌ Veuillez saisir une quantité de référence valide');
       return;
     }
 
-    if (!newProduct.quantite_reelle || newProduct.quantite_reelle <= 0) {
+    if (newProduct.stock_unite === undefined || newProduct.stock_unite < 0) {
       alert('❌ Veuillez saisir une quantité réelle valide');
       return;
     }
@@ -232,13 +232,13 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
       setNewProduct({
         nom: '',
         marque: '',
-        prix_reference: undefined as any,
+        prix_reference: '' as any,  // ✅ Chaîne vide
         reduction: 50,
         image_url: '',
         categorie: 'makeup',
-        quantite_reference: undefined as any,
-        quantite_reelle: undefined as any,
-        stock_unite: undefined as any,
+        quantite_reference: '' as any,  // ✅ Chaîne vide
+        quantite_reelle: '' as any,  // ✅ Chaîne vide
+        stock_unite: '' as any,  // ✅ Chaîne vide
         emplacement_stock: '',
         description: ''
       });
@@ -257,16 +257,21 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
     setNewProduct({
       nom: '',
       marque: '',
-      prix_reference: undefined as any,
+      prix_reference: '' as any,  // ✅ Chaîne vide
       reduction: 50,
       image_url: '',
       categorie: 'makeup',
-      quantite_reference: undefined as any,
-      quantite_reelle: undefined as any,
-      stock_unite: undefined as any,
+      quantite_reference: '' as any,  // ✅ Chaîne vide
+      quantite_reelle: '' as any,  // ✅ Chaîne vide
+      stock_unite: '' as any,  // ✅ Chaîne vide
       emplacement_stock: '',
       description: ''
     });
+
+     setPreviewImageUrl('');
+  
+  alert('📝 Formulaire réinitialisé');
+};
     
     setPreviewImageUrl('');
     
@@ -516,7 +521,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
                                 if (editingProduct) {
                                   setEditingProduct({...editingProduct, image_url: ''});
                                 } else {
-                                  setNewProduct({...newProduct, image_url: ''});
+                                  setEditingProduct({...editingProduct, image_url: ''});
                                 }
                               }}
                               className="text-red-500 text-sm hover:underline"
@@ -568,7 +573,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
                           if (editingProduct) {
                             setEditingProduct({...editingProduct, nom: e.target.value});
                           } else {
-                            setNewProduct({...newProduct, nom: e.target.value});
+                            setEditingProduct({...editingProduct, nom: e.target.value});
                           }
                         }}
                         className="w-full p-2 border rounded text-sm"
@@ -585,7 +590,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
                             if (editingProduct) {
                               setEditingProduct({...editingProduct, marque: value});
                             } else {
-                              setNewProduct({...newProduct, marque: value});
+                              setEditingProduct({...editingProduct, marque: value});
                             }
                           }}
                           className="flex-1 p-2 border rounded text-sm"
@@ -606,7 +611,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
                               if (editingProduct) {
                                 setEditingProduct({...editingProduct, marque: e.target.value});
                               } else {
-                                setNewProduct({...newProduct, marque: e.target.value});
+                                setEditingProduct({...editingProduct, marque: e.target.value});
                               }
                             }}
                             className="flex-1 p-2 border rounded text-sm border-green-500"
@@ -623,11 +628,11 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
                         placeholder="Prix"
                         value={editingProduct?.prix_reference ?? newProduct.prix_reference}
                         onChange={(e) => {
-                          const value = parseFloat(e.target.value) || 0;
+                          const value = e.target.value === '' ? '' : parseFloat(e.target.value);
                           if (editingProduct) {
-                            setEditingProduct({...editingProduct, prix_reference: value});
+                            setEditingProduct({...editingProduct, prix_reference: value as any});
                           } else {
-                            setNewProduct({...newProduct, prix_reference: value});
+                            setEditingProduct({...editingProduct, prix_reference: value as any});
                           }
                         }}
                         className="w-full p-2 border rounded text-sm"
@@ -641,11 +646,11 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
                         placeholder="Réduction"
                         value={(editingProduct?.reduction ?? newProduct.reduction) || 0}
                         onChange={(e) => {
-                          const value = parseInt(e.target.value) || 0;
+                          const value = e.target.value === '' ? '' : parseInt(e.target.value);
                           if (editingProduct) {
                             setEditingProduct({...editingProduct, reduction: value});
                           } else {
-                            setNewProduct({...newProduct, reduction: value});
+                            setNewProduct({...newProduct, reduction: value as any});
                           }
                         }}
                         className="w-full p-2 border rounded text-sm"
@@ -660,7 +665,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
                           if (editingProduct) {
                             setEditingProduct({...editingProduct, categorie: e.target.value as any});
                           } else {
-                            setNewProduct({...newProduct, categorie: e.target.value as any});
+                           setNewProduct({...newProduct, categorie: e.target.value as any});
                           }
                         }}
                         className="w-full p-2 border rounded text-sm"
@@ -681,11 +686,11 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
                         placeholder="Qté ref"
                         value={editingProduct?.quantite_reference ?? newProduct.quantite_reference}
                         onChange={(e) => {
-                          const value = parseInt(e.target.value) || 0;
+                          const value = e.target.value === '' ? '' : parseInt(e.target.value);
                           if (editingProduct) {
-                            setEditingProduct({...editingProduct, quantite_reference: value});
+                            setEditingProduct({...editingProduct, quantite_reference: value as any});
                           } else {
-                            setNewProduct({...newProduct, quantite_reference: value});
+                            setNewProduct({...newProduct, quantite_reference: value as any});
                           }
                         }}
                         className="w-full p-2 border rounded text-sm"
@@ -734,11 +739,11 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
                         placeholder="Qté réelle"
                         value={editingProduct?.quantite_reelle ?? newProduct.quantite_reelle}
                         onChange={(e) => {
-                          const value = parseInt(e.target.value) || 0;
+                          const value = e.target.value === '' ? '' : parseInt(e.target.value);
                           if (editingProduct) {
-                            setEditingProduct({...editingProduct, quantite_reelle: value});
+                            setEditingProduct({...editingProduct, quantite_reelle: value as any});
                           } else {
-                            setNewProduct({...newProduct, quantite_reelle: value});
+                            setNewProduct({...newProduct, quantite_reelle: value as any});
                           }
                         }}
                         className="w-full p-2 border rounded text-sm"
@@ -752,11 +757,11 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
                         placeholder="Stock"
                         value={editingProduct?.stock_unite ?? newProduct.stock_unite}
                         onChange={(e) => {
-                          const value = parseInt(e.target.value) || 0;
+                          const value = e.target.value === '' ? '' : parseInt(e.target.value);
                           if (editingProduct) {
-                            setEditingProduct({...editingProduct, stock_unite: value});
+                            setEditingProduct({...editingProduct, stock_unite: value as any});
                           } else {
-                            setNewProduct({...newProduct, stock_unite: value});
+                            setNewProduct({...newProduct, stock_unite: value as any});
                           }
                         }}
                         className="w-full p-2 border rounded text-sm"
@@ -773,7 +778,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
                           if (editingProduct) {
                             setEditingProduct({...editingProduct, emplacement_stock: e.target.value});
                           } else {
-                            setNewProduct({...newProduct, emplacement_stock: e.target.value});
+                            setEditingProduct({...editingProduct, description: e.target.value});
                           }
                         }}
                         className="w-full p-2 border rounded text-sm"
@@ -790,7 +795,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
                         if (editingProduct) {
                           setEditingProduct({...editingProduct, description: e.target.value});
                         } else {
-                          setNewProduct({...newProduct, description: e.target.value});
+                          setEditingProduct({...editingProduct, description: e.target.value});
                         }
                       }}
                       className="w-full p-2 border rounded text-sm"
