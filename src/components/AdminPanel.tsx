@@ -39,12 +39,12 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
   const [newProduct, setNewProduct] = useState({
     nom: '',
     marque: '',
-    prix_reference: 0,
+    prix_reference: '' as string | number,
     image_url: '',
     categorie: 'makeup' as const,
-    quantite_reference: 0,
-    quantite_reelle: 0,
-    stock_unite: 0,
+    quantite_reference: '' as string | number,
+    quantite_reelle: '' as string | number,
+    stock_unite: '' as string | number,
     emplacement_stock: '',
     reduction: 50,
     description: ''
@@ -195,17 +195,29 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
       return;
     }
 
-    if (!newProduct.quantite_reference || newProduct.quantite_reference <= 0) {
+    const quantiteRef = typeof newProduct.quantite_reference === 'string' 
+      ? parseFloat(newProduct.quantite_reference) 
+      : newProduct.quantite_reference;
+
+    const quantiteReelle = typeof newProduct.quantite_reelle === 'string'
+      ? parseFloat(newProduct.quantite_reelle)
+      : newProduct.quantite_reelle;
+
+    const stockUnite = typeof newProduct.stock_unite === 'string'
+      ? parseInt(newProduct.stock_unite)
+      : newProduct.stock_unite;
+
+    if (!quantiteRef || quantiteRef <= 0) {
       alert('❌ Veuillez saisir une quantité de référence valide');
       return;
     }
 
-    if (!newProduct.quantite_reelle || newProduct.quantite_reelle <= 0) {
+    if (!quantiteReelle || quantiteReelle <= 0) {
       alert('❌ Veuillez saisir une quantité réelle valide');
       return;
     }
 
-    if (newProduct.stock_unite === undefined || newProduct.stock_unite < 0) {
+    if (stockUnite === '' || stockUnite < 0) {
       alert('❌ Veuillez saisir un stock (0 ou plus)');
       return;
     }
@@ -214,8 +226,16 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
     if (!duplicatesConfirmed) return;
 
     try {
+      const prixRef = typeof newProduct.prix_reference === 'string'
+        ? parseFloat(newProduct.prix_reference)
+        : newProduct.prix_reference;
+
       const productToAdd = {
         ...newProduct,
+        prix_reference: prixRef,
+        quantite_reference: quantiteRef,
+        quantite_reelle: quantiteReelle,
+        stock_unite: stockUnite,
         image_url: previewImageUrl || newProduct.image_url,
         id: Date.now().toString()
       };
@@ -230,13 +250,13 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
       setNewProduct({
         nom: '',
         marque: '',
-        prix_reference: 0,
+        prix_reference: '',
         reduction: 50,
         image_url: '',
         categorie: 'makeup',
-        quantite_reference: 0,
-        quantite_reelle: 0,
-        stock_unite: 0,
+        quantite_reference: '',
+        quantite_reelle: '',
+        stock_unite: '',
         emplacement_stock: '',
         description: ''
       });
@@ -255,13 +275,13 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
     setNewProduct({
       nom: '',
       marque: '',
-      prix_reference: 0,
+      prix_reference: '',
       reduction: 50,
       image_url: '',
       categorie: 'makeup',
-      quantite_reference: 0,
-      quantite_reelle: 0,
-      stock_unite: 0,
+      quantite_reference: '',
+      quantite_reelle:'',
+      stock_unite: '',
       emplacement_stock: '',
       description: ''
     });
@@ -621,7 +641,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
                         placeholder="Prix"
                         value={editingProduct?.prix_reference ?? newProduct.prix_reference}
                         onChange={(e) => {
-                          const value = parseFloat(e.target.value) || 0;
+                          const value = e.target.value === '' ? '' : parseFloat(e.target.value);
                           if (editingProduct) {
                             setEditingProduct({...editingProduct, prix_reference: value});
                           } else {
@@ -637,9 +657,9 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
                       <input
                         type="number"
                         placeholder="Réduction"
-                        value={(editingProduct?.reduction ?? newProduct.reduction) || 0}
+                        value={editingProduct?.reduction ?? newProduct.reduction ?? 0}
                         onChange={(e) => {
-                          const value = parseInt(e.target.value) || 0;
+                          const value = e.target.value === '' ? 0 : parseInt(e.target.value);
                           if (editingProduct) {
                             setEditingProduct({...editingProduct, reduction: value});
                           } else {
@@ -679,7 +699,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
                         placeholder="Qté ref"
                         value={editingProduct?.quantite_reference ?? newProduct.quantite_reference}
                         onChange={(e) => {
-                          const value = parseInt(e.target.value) || 0;
+                          const value = e.target.value === '' ? '' : parseFloat(e.target.value);
                           if (editingProduct) {
                             setEditingProduct({...editingProduct, quantite_reference: value});
                           } else {
@@ -700,10 +720,20 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
                         <div className="text-3xl font-bold text-green-600">
                           {(() => {
                             const product = editingProduct || newProduct;
+                            const prixRef = typeof product.prix_reference === 'string' 
+                              ? parseFloat(product.prix_reference) || 0 
+                              : product.prix_reference || 0;
+                            const qteRef = typeof product.quantite_reference === 'string'
+                              ? parseFloat(product.quantite_reference) || 1
+                              : product.quantite_reference || 1;
+                            const qteReelle = typeof product.quantite_reelle === 'string'
+                              ? parseFloat(product.quantite_reelle) || 1
+                              : product.quantite_reelle || 1;
+                            
                             const prixReel = calculateRealPrice(
-                              product.prix_reference || 0,
-                              product.quantite_reference || 1,
-                              product.quantite_reelle || 1,
+                              prixRef,
+                              qteRef,
+                              qteReelle,
                               product.reduction || 0
                             );
                             return `${prixReel.toFixed(2)}€`;
@@ -712,10 +742,25 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
                       </div>
                       <div className="text-right text-xs text-gray-600">
                         <p className="mb-1">
-                          <span className="font-semibold">Prix/ml :</span> {(((editingProduct?.prix_reference ?? newProduct.prix_reference) || 0) / ((editingProduct?.quantite_reference ?? newProduct.quantite_reference) || 1)).toFixed(3)}€
+                          <span className="font-semibold">Prix/ml :</span> {(() => {
+                            const product = editingProduct || newProduct;
+                            const prixRef = typeof product.prix_reference === 'string' 
+                              ? parseFloat(product.prix_reference) || 0 
+                              : product.prix_reference || 0;
+                            const qteRef = typeof product.quantite_reference === 'string'
+                              ? parseFloat(product.quantite_reference) || 1
+                              : product.quantite_reference || 1;
+                            return (prixRef / qteRef).toFixed(3);
+                          })()}€
                         </p>
                         <p className="mb-1">
-                          <span className="font-semibold">Quantité :</span> {editingProduct?.quantite_reelle ?? newProduct.quantite_reelle}ml
+                          <span className="font-semibold">Quantité :</span> {(() => {
+                            const product = editingProduct || newProduct;
+                            const qteReelle = typeof product.quantite_reelle === 'string'
+                              ? parseFloat(product.quantite_reelle) || 0
+                              : product.quantite_reelle || 0;
+                            return qteReelle;
+                          })()}ml
                         </p>
                         <p>
                           <span className="font-semibold">Réduction :</span> -{editingProduct?.reduction ?? newProduct.reduction}%
@@ -732,7 +777,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
                         placeholder="Qté réelle"
                         value={editingProduct?.quantite_reelle ?? newProduct.quantite_reelle}
                         onChange={(e) => {
-                          const value = parseInt(e.target.value) || 0;
+                          const value = e.target.value === '' ? '' : parseFloat(e.target.value);
                           if (editingProduct) {
                             setEditingProduct({...editingProduct, quantite_reelle: value});
                           } else {
@@ -750,7 +795,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
                         placeholder="Stock"
                         value={editingProduct?.stock_unite ?? newProduct.stock_unite}
                         onChange={(e) => {
-                          const value = parseInt(e.target.value) || 0;
+                          const value = e.target.value === '' ? '' : parseInt(e.target.value);
                           if (editingProduct) {
                             setEditingProduct({...editingProduct, stock_unite: value});
                           } else {
@@ -779,65 +824,48 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
                     </div>
                   </div>
 
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700">Description</label>
-                    <textarea
-                      placeholder="Description du produit"
-                      value={(editingProduct?.description ?? newProduct.description) || ''}
-                      onChange={(e) => {
-                        if (editingProduct) {
-                          setEditingProduct({...editingProduct, description: e.target.value});
-                        } else {
-                          setNewProduct({...newProduct, description: e.target.value});
-                        }
-                      }}
-                      className="w-full p-2 border rounded text-sm"
-                      rows={2}
-                    />
+                  <div className="flex gap-2 mt-4">
+                    {editingProduct ? (
+                      <>
+                        <button
+                          onClick={handleUpdateProduct}
+                          className="px-4 py-2 md:px-6 md:py-2 bg-orange-500 text-white rounded hover:bg-orange-600 text-sm md:text-base"
+                        >
+                          Modifier
+                        </button>
+                        <button
+                          onClick={() => {
+                            setEditingProduct(null);
+                            setPreviewImageUrl('');
+                          }}
+                          className="px-4 py-2 md:px-6 md:py-2 bg-gray-500 text-white rounded hover:bg-gray-600 text-sm md:text-base"
+                        >
+                          Annuler
+                        </button>
+                      </>
+                    ) : (
+                      <>
+                        <button
+                          onClick={handleAddProduct}
+                          className="px-4 py-2 md:px-6 md:py-2 bg-green-500 text-white rounded hover:bg-green-600 text-sm md:text-base"
+                        >
+                          ✅ Ajouter
+                        </button>
+                        <button
+                          onClick={handleAnnulerAjout}
+                          className="px-4 py-2 md:px-6 md:py-2 bg-red-500 text-white rounded hover:bg-red-600 text-sm md:text-base"
+                        >
+                          ❌ Annuler
+                        </button>
+                        <button
+                          onClick={checkForDuplicates}
+                          className="px-4 py-2 md:px-6 md:py-2 bg-blue-500 text-white rounded hover:bg-blue-600 text-sm md:text-base"
+                        >
+                          🔍 Vérifier doublons
+                        </button>
+                      </>
+                    )}
                   </div>
-                </div>
-
-                <div className="flex gap-2 mt-4">
-                  {editingProduct ? (
-                    <>
-                      <button
-                        onClick={handleUpdateProduct}
-                        className="px-4 py-2 md:px-6 md:py-2 bg-orange-500 text-white rounded hover:bg-orange-600 text-sm md:text-base"
-                      >
-                        Modifier
-                      </button>
-                      <button
-                        onClick={() => {
-                          setEditingProduct(null);
-                          setPreviewImageUrl('');
-                        }}
-                        className="px-4 py-2 md:px-6 md:py-2 bg-gray-500 text-white rounded hover:bg-gray-600 text-sm md:text-base"
-                      >
-                        Annuler
-                      </button>
-                    </>
-                  ) : (
-                    <>
-                      <button
-                        onClick={handleAddProduct}
-                        className="px-4 py-2 md:px-6 md:py-2 bg-green-500 text-white rounded hover:bg-green-600 text-sm md:text-base"
-                      >
-                        ✅ Ajouter
-                      </button>
-                      <button
-                        onClick={handleAnnulerAjout}
-                        className="px-4 py-2 md:px-6 md:py-2 bg-red-500 text-white rounded hover:bg-red-600 text-sm md:text-base"
-                      >
-                        ❌ Annuler
-                      </button>
-                      <button
-                        onClick={checkForDuplicates}
-                        className="px-4 py-2 md:px-6 md:py-2 bg-blue-500 text-white rounded hover:bg-blue-600 text-sm md:text-base"
-                      >
-                        🔍 Vérifier doublons
-                      </button>
-                    </>
-                  )}
                 </div>
               </div>
 
