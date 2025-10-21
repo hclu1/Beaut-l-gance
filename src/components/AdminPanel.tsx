@@ -652,6 +652,45 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
                       />
                     </div>
 
+                    
+<div>
+                      <label className="block text-sm font-medium text-gray-700">Quantité référence (ml)</label>
+                      <input
+                        type="number"
+                        placeholder="Qté ref"
+                        value={editingProduct?.quantite_reference ?? newProduct.quantite_reference}
+                        onChange={(e) => {
+                          const value = e.target.value === '' ? '' : parseFloat(e.target.value);
+                          if (editingProduct) {
+                            setEditingProduct({...editingProduct, quantite_reference: value});
+                          } else {
+                            setNewProduct({...newProduct, quantite_reference: value});
+                          }
+                        }}
+                        className="w-full p-2 border rounded text-sm"
+                      />
+                    </div>
+
+<div>
+                     
+
+ <label className="block text-sm font-medium text-gray-700">Quantité réelle (ml)</label>
+                      <input
+                        type="number"
+                        placeholder="Qté réelle"
+                        value={editingProduct?.quantite_reelle ?? newProduct.quantite_reelle}
+                        onChange={(e) => {
+                          const value = e.target.value === '' ? '' : parseFloat(e.target.value);
+                          if (editingProduct) {
+                            setEditingProduct({...editingProduct, quantite_reelle: value});
+                          } else {
+                            setNewProduct({...newProduct, quantite_reelle: value});
+                          }
+                        }}
+                        className="w-full p-2 border rounded text-sm"
+                      />
+                    </div>
+
                     <div>
                       <label className="block text-sm font-medium text-gray-700">Réduction (%)</label>
                       <input
@@ -692,23 +731,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
                       </select>
                     </div>
 
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700">Quantité référence (ml)</label>
-                      <input
-                        type="number"
-                        placeholder="Qté ref"
-                        value={editingProduct?.quantite_reference ?? newProduct.quantite_reference}
-                        onChange={(e) => {
-                          const value = e.target.value === '' ? '' : parseFloat(e.target.value);
-                          if (editingProduct) {
-                            setEditingProduct({...editingProduct, quantite_reference: value});
-                          } else {
-                            setNewProduct({...newProduct, quantite_reference: value});
-                          }
-                        }}
-                        className="w-full p-2 border rounded text-sm"
-                      />
-                    </div>
+                    
                   </div>
 
                   <div className="bg-gradient-to-r from-green-50 to-emerald-50 p-4 rounded-lg border-2 border-green-300 shadow-sm my-4">
@@ -770,23 +793,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
                   </div>
 
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700">Quantité réelle (ml)</label>
-                      <input
-                        type="number"
-                        placeholder="Qté réelle"
-                        value={editingProduct?.quantite_reelle ?? newProduct.quantite_reelle}
-                        onChange={(e) => {
-                          const value = e.target.value === '' ? '' : parseFloat(e.target.value);
-                          if (editingProduct) {
-                            setEditingProduct({...editingProduct, quantite_reelle: value});
-                          } else {
-                            setNewProduct({...newProduct, quantite_reelle: value});
-                          }
-                        }}
-                        className="w-full p-2 border rounded text-sm"
-                      />
-                    </div>
+                    
 
                     <div>
                       <label className="block text-sm font-medium text-gray-700">Stock (unités)</label>
@@ -823,6 +830,24 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
                       />
                     </div>
                   </div>
+
+                 <div>
+  <label className="block text-sm font-medium text-gray-700">Description</label>
+  <textarea
+    placeholder="Description du produit"
+    value={editingProduct?.description ?? newProduct.description}
+    onChange={(e) => {
+      if (editingProduct) {
+        setEditingProduct({...editingProduct, description: e.target.value});
+      } else {
+        setNewProduct({...newProduct, description: e.target.value});
+      }
+    }}
+    className="w-full p-2 border rounded text-sm"
+    rows={3}
+  />
+</div>
+ 
 
                   <div className="flex gap-2 mt-4">
                     {editingProduct ? (
