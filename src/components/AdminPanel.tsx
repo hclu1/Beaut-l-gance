@@ -408,6 +408,34 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
     return order.items.every(item => order.preparedItems?.[item.id] === true);
   };
 
+  const handleDuplicateProduct = (product: Product) => {
+    // Remplir le formulaire avec les données du produit à dupliquer
+    setNewProduct({
+      nom: product.nom,
+      marque: product.marque,
+      prix_reference: product.prix_reference,
+      image_url: product.image_url,
+      categorie: product.categorie,
+      quantite_reference: product.quantite_reference,
+      quantite_reelle: product.quantite_reelle,
+      stock_unite: product.stock_unite,
+      emplacement_stock: product.emplacement_stock || '',
+      reduction: product.reduction,
+      description: product.description || ''
+    });
+    
+    // Copier l'image preview si elle existe
+    setPreviewImageUrl(product.image_url || '');
+    
+    // Développer le formulaire pour voir les modifications
+    setFormCollapsed(false);
+    
+    // Scroll vers le haut pour voir le formulaire
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+    
+    alert('✨ Produit dupliqué dans le formulaire !\nModifiez les champs nécessaires puis cliquez sur "Ajouter"');
+  };
+
   const handleFindSimilarProducts = (product: Product) => {
     const similar = products.filter(p => 
       p.id !== product.id &&
