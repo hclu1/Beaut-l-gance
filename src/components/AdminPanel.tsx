@@ -31,14 +31,16 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
   const [similarProducts, setSimilarProducts] = useState<Product[]>([]);
 
   // État pour le filtre de marque/emplacement combiné
-  // État pour le filtre de marque/emplacement combiné
-const [selectedBrandOrEmplacement, setSelectedBrandOrEmplacement] = useState<string>('all');
+  const [selectedBrandOrEmplacement, setSelectedBrandOrEmplacement] = useState<string>('all');
 
-// États pour la saisie de nouvelle marque
-const [isAddingNewBrand, setIsAddingNewBrand] = useState(false);
-const [newBrandInput, setNewBrandInput] = useState('');
+  // États pour la saisie de nouvelle marque
+  const [isAddingNewBrand, setIsAddingNewBrand] = useState(false);
+  const [newBrandInput, setNewBrandInput] = useState('');
+  
+  // État pour réduire/développer le formulaire
+  const [formCollapsed, setFormCollapsed] = useState(false);
 
-const allBrands = Array.from(new Set(products.map(p => p.marque))).sort();
+  const allBrands = Array.from(new Set(products.map(p => p.marque))).sort();
   const allEmplacements = Array.from(new Set(products.map(p => p.emplacement_stock).filter(e => e))).sort();
 
   const [newProduct, setNewProduct] = useState({
@@ -266,11 +268,11 @@ const allBrands = Array.from(new Set(products.map(p => p.marque))).sort();
         description: ''
       });
       
-    setPreviewImageUrl('');
-setIsAddingNewBrand(false);  // 👈 AJOUTEZ
-setNewBrandInput('');         // 👈 AJOUTEZ
+      setPreviewImageUrl('');
+      setIsAddingNewBrand(false);
+      setNewBrandInput('');
 
-alert('✅ Produit ajouté avec succès !');
+      alert('✅ Produit ajouté avec succès !');
       
     } catch (error) {
       console.error('Erreur ajout produit:', error);
@@ -294,10 +296,10 @@ alert('✅ Produit ajouté avec succès !');
     });
     
     setPreviewImageUrl('');
-setIsAddingNewBrand(false);  // 👈 AJOUTEZ
-setNewBrandInput('');         // 👈 AJOUTEZ
+    setIsAddingNewBrand(false);
+    setNewBrandInput('');
 
-alert('📝 Formulaire réinitialisé');
+    alert('📝 Formulaire réinitialisé');
   };
 
   const handleUpdateProduct = async () => {
@@ -327,10 +329,10 @@ alert('📝 Formulaire réinitialisé');
       }
 
       setEditingProduct(null);
-setPreviewImageUrl('');
-setIsAddingNewBrand(false);  // 👈 AJOUTEZ
-setNewBrandInput('');         // 👈 AJOUTEZ
-alert('Produit mis à jour avec succès !');
+      setPreviewImageUrl('');
+      setIsAddingNewBrand(false);
+      setNewBrandInput('');
+      alert('Produit mis à jour avec succès !');
     } catch (error) {
       console.error('❌ Erreur mise à jour produit:', error);
       alert('Erreur lors de la mise à jour du produit dans Supabase');
@@ -516,11 +518,20 @@ alert('Produit mis à jour avec succès !');
           {activeTab === 'products' && (
             <div className="space-y-4">
               <div className="bg-purple-50 p-3 md:p-4 rounded border border-purple-200 mb-4">
-                <h3 className="font-bold mb-3 text-purple-800 text-sm md:text-base">
-                  {editingProduct ? '✏️ Modifier un produit' : '➕ Ajouter un produit'}
-                </h3>
+                <div className="flex justify-between items-center mb-3">
+                  <h3 className="font-bold text-purple-800 text-sm md:text-base">
+                    {editingProduct ? '✏️ Modifier un produit' : '➕ Ajouter un produit'}
+                  </h3>
+                  <button
+                    onClick={() => setFormCollapsed(!formCollapsed)}
+                    className="px-3 py-1 bg-purple-600 text-white rounded hover:bg-purple-700 text-xs md:text-sm"
+                  >
+                    {formCollapsed ? '▼ Développer' : '▲ Réduire'}
+                  </button>
+                </div>
 
-                <div className="space-y-4">
+                {!formCollapsed && (
+                  <div className="space-y-4">
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-2">
                       Image du produit 
@@ -604,95 +615,95 @@ alert('Produit mis à jour avec succès !');
                       />
                     </div>
 
-       <div>
-  <label className="block text-sm font-medium text-gray-700">Marque</label>
-  <div className="flex gap-2">
-    {!isAddingNewBrand ? (
-      <select
-        value={editingProduct?.marque ?? newProduct.marque}
-        onChange={(e) => {
-          const value = e.target.value;
-          if (value === '__custom__') {
-            setIsAddingNewBrand(true);
-            setNewBrandInput('');
-          } else {
-            if (editingProduct) {
-              setEditingProduct({...editingProduct, marque: value});
-            } else {
-              setNewProduct({...newProduct, marque: value});
-            }
-          }
-        }}
-        className="flex-1 p-2 border rounded text-sm"
-      >
-        <option value="">-- Sélectionner ou saisir --</option>
-        {allBrands.map(brand => (
-          <option key={brand} value={brand}>{brand}</option>
-        ))}
-        <option value="__custom__">+ Ajouter une nouvelle marque</option>
-      </select>
-    ) : (
-      <>
-        <input
-          type="text"
-          placeholder="Nouvelle marque"
-          value={newBrandInput}
-          autoFocus
-          onChange={(e) => setNewBrandInput(e.target.value)}
-          onKeyDown={(e) => {
-            if (e.key === 'Enter' && newBrandInput.trim()) {
-              if (editingProduct) {
-                setEditingProduct({...editingProduct, marque: newBrandInput.trim()});
-              } else {
-                setNewProduct({...newProduct, marque: newBrandInput.trim()});
-              }
-              setIsAddingNewBrand(false);
-              setNewBrandInput('');
-            } else if (e.key === 'Escape') {
-              setIsAddingNewBrand(false);
-              setNewBrandInput('');
-            }
-          }}
-          className="flex-1 p-2 border rounded text-sm border-green-500"
-        />
-        <button
-          type="button"
-          onClick={() => {
-            if (newBrandInput.trim()) {
-              if (editingProduct) {
-                setEditingProduct({...editingProduct, marque: newBrandInput.trim()});
-              } else {
-                setNewProduct({...newProduct, marque: newBrandInput.trim()});
-              }
-            }
-            setIsAddingNewBrand(false);
-            setNewBrandInput('');
-          }}
-          className="px-3 py-2 bg-green-500 text-white rounded hover:bg-green-600 text-sm"
-          title="Valider"
-        >
-          ✓
-        </button>
-        <button
-          type="button"
-          onClick={() => {
-            setIsAddingNewBrand(false);
-            setNewBrandInput('');
-          }}
-          className="px-3 py-2 bg-gray-500 text-white rounded hover:bg-gray-600 text-sm"
-          title="Annuler"
-        >
-          ✕
-        </button>
-      </>
-    )}
-  </div>
-  {(editingProduct?.marque || newProduct.marque) && !isAddingNewBrand && (
-    <p className="text-xs text-gray-500 mt-1">
-      Marque actuelle : <span className="font-semibold">{editingProduct?.marque || newProduct.marque}</span>
-    </p>
-  )}
-</div>             
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700">Marque</label>
+                      <div className="flex gap-2">
+                        {!isAddingNewBrand ? (
+                          <select
+                            value={editingProduct?.marque ?? newProduct.marque}
+                            onChange={(e) => {
+                              const value = e.target.value;
+                              if (value === '__custom__') {
+                                setIsAddingNewBrand(true);
+                                setNewBrandInput('');
+                              } else {
+                                if (editingProduct) {
+                                  setEditingProduct({...editingProduct, marque: value});
+                                } else {
+                                  setNewProduct({...newProduct, marque: value});
+                                }
+                              }
+                            }}
+                            className="flex-1 p-2 border rounded text-sm"
+                          >
+                            <option value="">-- Sélectionner ou saisir --</option>
+                            {allBrands.map(brand => (
+                              <option key={brand} value={brand}>{brand}</option>
+                            ))}
+                            <option value="__custom__">+ Ajouter une nouvelle marque</option>
+                          </select>
+                        ) : (
+                          <>
+                            <input
+                              type="text"
+                              placeholder="Nouvelle marque"
+                              value={newBrandInput}
+                              autoFocus
+                              onChange={(e) => setNewBrandInput(e.target.value)}
+                              onKeyDown={(e) => {
+                                if (e.key === 'Enter' && newBrandInput.trim()) {
+                                  if (editingProduct) {
+                                    setEditingProduct({...editingProduct, marque: newBrandInput.trim()});
+                                  } else {
+                                    setNewProduct({...newProduct, marque: newBrandInput.trim()});
+                                  }
+                                  setIsAddingNewBrand(false);
+                                  setNewBrandInput('');
+                                } else if (e.key === 'Escape') {
+                                  setIsAddingNewBrand(false);
+                                  setNewBrandInput('');
+                                }
+                              }}
+                              className="flex-1 p-2 border rounded text-sm border-green-500"
+                            />
+                            <button
+                              type="button"
+                              onClick={() => {
+                                if (newBrandInput.trim()) {
+                                  if (editingProduct) {
+                                    setEditingProduct({...editingProduct, marque: newBrandInput.trim()});
+                                  } else {
+                                    setNewProduct({...newProduct, marque: newBrandInput.trim()});
+                                  }
+                                }
+                                setIsAddingNewBrand(false);
+                                setNewBrandInput('');
+                              }}
+                              className="px-3 py-2 bg-green-500 text-white rounded hover:bg-green-600 text-sm"
+                              title="Valider"
+                            >
+                              ✓
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setIsAddingNewBrand(false);
+                                setNewBrandInput('');
+                              }}
+                              className="px-3 py-2 bg-gray-500 text-white rounded hover:bg-gray-600 text-sm"
+                              title="Annuler"
+                            >
+                              ✕
+                            </button>
+                          </>
+                        )}
+                      </div>
+                      {(editingProduct?.marque || newProduct.marque) && !isAddingNewBrand && (
+                        <p className="text-xs text-gray-500 mt-1">
+                          Marque actuelle : <span className="font-semibold">{editingProduct?.marque || newProduct.marque}</span>
+                        </p>
+                      )}
+                    </div>             
 
                     <div>
                       <label className="block text-sm font-medium text-gray-700">Prix référence (€)</label>
@@ -713,8 +724,7 @@ alert('Produit mis à jour avec succès !');
                       />
                     </div>
 
-                    
-<div>
+                    <div>
                       <label className="block text-sm font-medium text-gray-700">Quantité référence (ml)</label>
                       <input
                         type="number"
@@ -732,10 +742,8 @@ alert('Produit mis à jour avec succès !');
                       />
                     </div>
 
-<div>
-                     
-
- <label className="block text-sm font-medium text-gray-700">Quantité réelle (ml)</label>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700">Quantité réelle (ml)</label>
                       <input
                         type="number"
                         placeholder="Qté réelle"
@@ -791,8 +799,6 @@ alert('Produit mis à jour avec succès !');
                         <option value="accessories">Accessoires</option>
                       </select>
                     </div>
-
-                    
                   </div>
 
                   <div className="bg-gradient-to-r from-green-50 to-emerald-50 p-4 rounded-lg border-2 border-green-300 shadow-sm my-4">
@@ -854,8 +860,6 @@ alert('Produit mis à jour avec succès !');
                   </div>
 
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    
-
                     <div>
                       <label className="block text-sm font-medium text-gray-700">Stock (unités)</label>
                       <input
@@ -892,23 +896,22 @@ alert('Produit mis à jour avec succès !');
                     </div>
                   </div>
 
-                 <div>
-  <label className="block text-sm font-medium text-gray-700">Description</label>
-  <textarea
-    placeholder="Description du produit"
-    value={editingProduct?.description ?? newProduct.description}
-    onChange={(e) => {
-      if (editingProduct) {
-        setEditingProduct({...editingProduct, description: e.target.value});
-      } else {
-        setNewProduct({...newProduct, description: e.target.value});
-      }
-    }}
-    className="w-full p-2 border rounded text-sm"
-    rows={3}
-  />
-</div>
- 
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700">Description</label>
+                    <textarea
+                      placeholder="Description du produit"
+                      value={editingProduct?.description ?? newProduct.description}
+                      onChange={(e) => {
+                        if (editingProduct) {
+                          setEditingProduct({...editingProduct, description: e.target.value});
+                        } else {
+                          setNewProduct({...newProduct, description: e.target.value});
+                        }
+                      }}
+                      className="w-full p-2 border rounded text-sm"
+                      rows={3}
+                    />
+                  </div>
 
                   <div className="flex gap-2 mt-4">
                     {editingProduct ? (
@@ -953,12 +956,19 @@ alert('Produit mis à jour avec succès !');
                     )}
                   </div>
                 </div>
+                )}
               </div>
 
-              <div className="mb-4 flex flex-wrap gap-2">
+              <div className="mb-4 flex flex-wrap gap-2 items-center">
                 <select
                   value={selectedBrandOrEmplacement}
-                  onChange={(e) => setSelectedBrandOrEmplacement(e.target.value)}
+                  onChange={(e) => {
+                    setSelectedBrandOrEmplacement(e.target.value);
+                    // Auto-collapse le formulaire quand on filtre (sauf "all")
+                    if (e.target.value !== 'all') {
+                      setFormCollapsed(true);
+                    }
+                  }}
                   className="px-3 py-2 border rounded text-sm"
                 >
                   <option value="all">Tous les produits</option>
@@ -973,6 +983,19 @@ alert('Produit mis à jour avec succès !');
                     ))}
                   </optgroup>
                 </select>
+                {selectedBrandOrEmplacement !== 'all' && (
+                  <span className="text-xs text-gray-600 bg-purple-100 px-2 py-1 rounded">
+                    {products.filter(p => {
+                      if (selectedBrandOrEmplacement.startsWith('brand:')) {
+                        return p.marque === selectedBrandOrEmplacement.replace('brand:', '');
+                      }
+                      if (selectedBrandOrEmplacement.startsWith('emp:')) {
+                        return p.emplacement_stock === selectedBrandOrEmplacement.replace('emp:', '');
+                      }
+                      return false;
+                    }).length} produit(s) trouvé(s)
+                  </span>
+                )}
               </div>
 
               <div className="space-y-2 max-h-96 overflow-y-auto">
