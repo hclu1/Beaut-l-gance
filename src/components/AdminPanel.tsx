@@ -645,8 +645,8 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
 
                     <div>
                       <label className="block text-sm font-medium text-gray-700">Marque</label>
-                      <div className="flex gap-2">
-                        {!isAddingNewBrand ? (
+                      {!isAddingNewBrand ? (
+                        <div className="flex gap-2">
                           <select
                             value={editingProduct?.marque ?? newProduct.marque}
                             onChange={(e) => {
@@ -670,65 +670,65 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
                             ))}
                             <option value="__custom__">+ Ajouter une nouvelle marque</option>
                           </select>
-                        ) : (
-                          <>
-                            <input
-                              type="text"
-                              placeholder="Nouvelle marque"
-                              value={newBrandInput}
-                              autoFocus
-                              onChange={(e) => setNewBrandInput(e.target.value)}
-                              onKeyDown={(e) => {
-                                if (e.key === 'Enter' && newBrandInput.trim()) {
-                                  if (editingProduct) {
-                                    setEditingProduct({...editingProduct, marque: newBrandInput.trim()});
-                                  } else {
-                                    setNewProduct({...newProduct, marque: newBrandInput.trim()});
-                                  }
-                                  setIsAddingNewBrand(false);
-                                  setNewBrandInput('');
-                                } else if (e.key === 'Escape') {
-                                  setIsAddingNewBrand(false);
-                                  setNewBrandInput('');
-                                }
-                              }}
-                              className="flex-1 p-2 border rounded text-sm border-green-500"
-                            />
-                            <button
-                              type="button"
-                              onClick={() => {
-                                if (newBrandInput.trim()) {
-                                  if (editingProduct) {
-                                    setEditingProduct({...editingProduct, marque: newBrandInput.trim()});
-                                  } else {
-                                    setNewProduct({...newProduct, marque: newBrandInput.trim()});
-                                  }
+                        </div>
+                      ) : (
+                        <div className="flex gap-2">
+                          <input
+                            type="text"
+                            placeholder="Nouvelle marque"
+                            value={newBrandInput}
+                            autoFocus
+                            onChange={(e) => setNewBrandInput(e.target.value)}
+                            onKeyDown={(e) => {
+                              if (e.key === 'Enter' && newBrandInput.trim()) {
+                                if (editingProduct) {
+                                  setEditingProduct({...editingProduct, marque: newBrandInput.trim()});
+                                } else {
+                                  setNewProduct({...newProduct, marque: newBrandInput.trim()});
                                 }
                                 setIsAddingNewBrand(false);
                                 setNewBrandInput('');
-                              }}
-                              className="px-3 py-2 bg-green-500 text-white rounded hover:bg-green-600 text-sm"
-                              title="Valider"
-                            >
-                              ✓
-                            </button>
-                            <button
-                              type="button"
-                              onClick={() => {
+                              } else if (e.key === 'Escape') {
                                 setIsAddingNewBrand(false);
                                 setNewBrandInput('');
-                              }}
-                              className="px-3 py-2 bg-gray-500 text-white rounded hover:bg-gray-600 text-sm"
-                              title="Annuler"
-                            >
-                              ✕
-                            </button>
-                          </>
-                        )}
-                      </div>
-                      {(editingProduct?.marque || newProduct.marque) && !isAddingNewBrand && (
-                        <p className="text-xs text-gray-500 mt-1">
-                          Marque actuelle : <span className="font-semibold">{editingProduct?.marque || newProduct.marque}</span>
+                              }
+                            }}
+                            className="flex-1 p-2 border rounded text-sm border-green-500"
+                          />
+                          <button
+                            type="button"
+                            onClick={() => {
+                              if (newBrandInput.trim()) {
+                                if (editingProduct) {
+                                  setEditingProduct({...editingProduct, marque: newBrandInput.trim()});
+                                } else {
+                                  setNewProduct({...newProduct, marque: newBrandInput.trim()});
+                                }
+                              }
+                              setIsAddingNewBrand(false);
+                              setNewBrandInput('');
+                            }}
+                            className="px-3 py-2 bg-green-500 text-white rounded hover:bg-green-600 text-sm"
+                            title="Valider"
+                          >
+                            ✓
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setIsAddingNewBrand(false);
+                              setNewBrandInput('');
+                            }}
+                            className="px-3 py-2 bg-gray-500 text-white rounded hover:bg-gray-600 text-sm"
+                            title="Annuler"
+                          >
+                            ✕
+                          </button>
+                        </div>
+                      )}
+                      {(editingProduct?.marque || newProduct.marque) && (
+                        <p className="text-xs text-green-600 mt-1 font-semibold">
+                          ✓ Marque sélectionnée : {editingProduct?.marque || newProduct.marque}
                         </p>
                       )}
                     </div>             
