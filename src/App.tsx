@@ -2,6 +2,7 @@ import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Product, Order, CartItem, SyncData } from './types';
 import { initialProducts, SHOP_CONFIG, STORAGE_KEYS } from './constants';
+import { supabase } from './services/productService'; 
 import { 
   saveToStorage, 
   loadFromStorage, 
@@ -15,7 +16,7 @@ import FloatingCartIcon from './components/FloatingCartIcon';
 import CheckoutModal from './components/CheckoutModal';
 import AdminPanel from './components/AdminPanel';
 import { ProductService } from './services/productService';
-import { EmailService } from './services/emailService'; // 🚀 AJOUT
+import { EmailService } from './services/emailService'; 
 
 const App: React.FC = () => {
   const [selectedCat, setSelectedCat] = useState<string | null>(null);
@@ -31,9 +32,50 @@ const App: React.FC = () => {
   );
   const [loading, setLoading] = useState(false);
   
+  // --- ÉTAT COMMANDES (Ajouté manuellement car il manquait) ---
   const [orders, setOrders] = useState<Order[]>(() =>
     loadFromStorage(STORAGE_KEYS.ORDERS, [])
   );
+
+  // --- ÉCOUTER LES COMMANDES EN TEMPS RÉEL (SUPABASE) ---
+  useEffect(() => {
+    // 1. Charger les commandes existantes au démarrage
+    const fetchOrders = async () => {
+      const { data, error } = await supabase
+        .from('orders')
+        .select('*')
+        .order('created_at', { ascending: false });
+      
+      if (!error && data) {
+        setOrders(data);
+      }
+    };
+
+    fetchOrders();
+
+    // 2. S'abonner aux NOUVELLES commandes
+    const channel = supabase
+      .channel('public:orders')
+      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'orders' }, (payload) => {
+        console.log('🔔 NOUVELLE COMMANDE REÇUE !', payload.new);
+        setOrders((prev: Order[]) => {
+          // Vérifier doublon
+          if (prev.some(o => o.id === payload.new.id)) return prev;
+          return [payload.new as Order, ...prev];
+        });
+      })
+      .subscribe();
+
+    // 3. Nettoyage quand on quitte
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, []);
+
+  // Sauvegarde automatique des commandes dans le localStorage
+  useEffect(() => {
+    saveToStorage(STORAGE_KEYS.ORDERS, orders);
+  }, [orders]);
 
   // 🚀 OPTIMISATION 1: Générer QR Code une seule fois
   const qrCodeUrl = useMemo(() => {
@@ -46,13 +88,11 @@ const App: React.FC = () => {
     let isMounted = true;
     
     const loadProducts = async () => {
-      // Afficher immédiatement le cache si disponible
       const cachedProducts = loadFromStorage(STORAGE_KEYS.PRODUCTS, []);
       if (cachedProducts.length > 0) {
         setProducts(cachedProducts);
       }
 
-      // Charger en arrière-plan depuis Supabase
       try {
         setLoading(true);
         const data = await ProductService.getAllProducts();
@@ -63,7 +103,6 @@ const App: React.FC = () => {
         }
       } catch (err) {
         console.error('Erreur chargement Supabase:', err);
-        // Garder le cache en cas d'erreur
         if (cachedProducts.length === 0) {
           setProducts(initialProducts);
         }
@@ -98,11 +137,6 @@ const App: React.FC = () => {
       }, 1000);
     }
   }, []);
-
-  // Sauvegarde automatique des commandes
-  useEffect(() => {
-    saveToStorage(STORAGE_KEYS.ORDERS, orders);
-  }, [orders]);
 
   const handleDataSync = (syncData: SyncData) => {
     if (!syncData.products || !Array.isArray(syncData.products) ||
@@ -262,7 +296,7 @@ const App: React.FC = () => {
     console.log('Commande sauvegardée dans Supabase');
     
     // 🚀 NOUVEAU : Envoyer l'email de notification
-EmailService.sendOrderNotification(newOrder);
+    EmailService.sendOrderNotification(newOrder);
 
     setOrders([newOrder, ...orders]);
     setCart([]);
@@ -284,7 +318,6 @@ EmailService.sendOrderNotification(newOrder);
   }
 }, [cart, orders, calculateRealPrice]);
 
-
   // 🚀 OPTIMISATION 6: Mémoriser le filtrage et le regroupement
 const { filteredProducts, groupedProducts } = useMemo(() => {
   // Filtrage
@@ -299,34 +332,29 @@ const { filteredProducts, groupedProducts } = useMemo(() => {
     return matchesCat && matchesSearch && hasStock;
   });
 
-  // 🚀 CORRECTION COMPLÈTE : Regrouper par nom + marque + quantité_reelle
+  // Regroupement par nom + marque + quantité_reelle
   const uniqueProductsMap = new Map<string, Product>();
 
   filtered.forEach(product => {
-    // Clé unique basée sur nom, marque ET quantité réelle
     const key = `${product.nom.toLowerCase()}-${product.marque.toLowerCase()}-${product.quantite_reelle || 0}ml`;
     
     if (uniqueProductsMap.has(key)) {
-      // Produit existe déjà, on additionne les stocks
       const existing = uniqueProductsMap.get(key)!;
       uniqueProductsMap.set(key, {
         ...existing,
         stock_unite: (existing.stock_unite || 0) + (product.stock_unite || 0)
       });
     } else {
-      // Nouveau produit unique
       uniqueProductsMap.set(key, { ...product });
     }
   });
 
-  // Convertir la Map en tableau de produits uniques
   const uniqueProducts = Array.from(uniqueProductsMap.values());
 
-  // 🚀 Regrouper les VRAIES variantes (même nom/marque mais quantités différentes)
+  // Regroupement des variantes
   const variantGroups = new Map<string, Product[]>();
 
   uniqueProducts.forEach(product => {
-    // Clé de base sans la quantité
     const baseKey = `${product.nom.toLowerCase()}-${product.marque.toLowerCase()}`;
     
     if (!variantGroups.has(baseKey)) {
@@ -335,30 +363,19 @@ const { filteredProducts, groupedProducts } = useMemo(() => {
     variantGroups.get(baseKey)!.push(product);
   });
 
-  // Filtrer pour ne garder que les groupes avec plusieurs quantités DIFFÉRENTES
   const groupedProducts = Array.from(variantGroups.values())
     .map(group => {
       const uniqueQuantities = new Set(group.map(p => p.quantite_reelle));
       
       if (uniqueQuantities.size > 1) {
-        // Vraies variantes : trier par quantité
         return group.sort((a, b) => (a.quantite_reelle || 0) - (b.quantite_reelle || 0));
       } else {
-        // Produit unique : retourner comme tableau à 1 élément
         return [group[0]];
       }
     });
 
-  console.log('📊 Résultat regroupement:', {
-    produits_filtrés: filtered.length,
-    produits_uniques: uniqueProducts.length,
-    cartes_affichées: groupedProducts.length
-  });
-
   return { filteredProducts: filtered, groupedProducts };
 }, [products, selectedCat, searchTerm]);
-
-
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-pink-50 via-purple-50 to-pink-100 relative overflow-hidden">
@@ -396,7 +413,7 @@ const { filteredProducts, groupedProducts } = useMemo(() => {
             </button>
           </div>
 
-          {/* Modal QR Code - 🚀 OPTIMISÉ: utilise qrCodeUrl mémorisé */}
+          {/* Modal QR Code */}
           {showQR && (
             <motion.div 
               initial={{ opacity: 0, scale: 0.9 }}
@@ -452,7 +469,7 @@ const { filteredProducts, groupedProducts } = useMemo(() => {
           ))}
         </div>
 
-        {/* 🚀 OPTIMISATION: Indicateur de chargement */}
+        {/* Indicateur de chargement */}
         {loading && (
           <div className="text-center py-4 text-purple-600">
             Mise à jour des produits...
