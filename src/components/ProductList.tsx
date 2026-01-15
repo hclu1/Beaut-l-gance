@@ -27,7 +27,7 @@ export default function ProductList({ products }: { products: any[] }) {
 
   return (
     <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 p-4">
-      {products.map((product) => {
+      {products?.map((product) => {
         const basePrice = calculateRealPrice(product);
         const finalPrice = calculateFinalPrice(product);
         const reduction = product.reduction || 0;
