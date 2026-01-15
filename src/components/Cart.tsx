@@ -11,17 +11,19 @@ interface CartProps {
 const Cart: React.FC<CartProps> = ({ cart, removeFromCart, updateQuantity }) => {
   // Fonction pour calculer le prix réel d'un produit
   const calculateRealPrice = (item: CartItem) => {
+    if (!item) return 0; // Sécurité
     if (item.quantite_reference && item.quantite_reference > 0) {
       return (item.prix_reference / item.quantite_reference) * (item.quantite_reelle || item.quantite_reference);
     }
     return item.prix_reference;
   };
 
-  // Calculer le total du panier en utilisant le prix réel
-  const total = cart.reduce((sum, item) => {
+  // Calculer le total du panier (Sécurité ajoutée sur .reduce)
+  const total = (cart || []).reduce((sum, item) => {
+    if (!item) return sum;
     const realPrice = calculateRealPrice(item);
     const finalPrice = realPrice * (1 - (item.reduction || 0) / 100);
-    return sum + (finalPrice * item.quantite_achat);
+    return sum + (finalPrice * (item.quantite_achat || 0));
   }, 0);
 
   return (
@@ -34,14 +36,14 @@ const Cart: React.FC<CartProps> = ({ cart, removeFromCart, updateQuantity }) => 
       <div className="flex items-center gap-2 mb-4">
         <div className="w-6 h-6 bg-gradient-to-r from-pink-500 to-purple-600 rounded-full"></div>
         <h3 className="text-xl font-bold text-gray-800">Mon Panier</h3>
-        {cart.length > 0 && (
+        {cart?.length > 0 && (
           <span className="bg-purple-100 text-purple-700 text-sm px-2 py-1 rounded-full">
-            {cart.reduce((sum, item) => sum + item.quantite_achat, 0)} article{cart.reduce((sum, item) => sum + item.quantite_achat, 0) > 1 ? 's' : ''}
+            {(cart || []).reduce((sum, item) => sum + (item.quantite_achat || 0), 0)} article{(cart || []).reduce((sum, item) => sum + (item.quantite_achat || 0), 0) > 1 ? 's' : ''}
           </span>
         )}
       </div>
       
-      {cart.length === 0 ? (
+      {(!cart || cart.length === 0) ? (
         <div className="text-center py-8 text-gray-500">
           <div className="text-4xl mb-2">🛍️</div>
           <p>Votre panier est vide</p>
@@ -49,10 +51,13 @@ const Cart: React.FC<CartProps> = ({ cart, removeFromCart, updateQuantity }) => 
         </div>
       ) : (
         <AnimatePresence>
-          {cart?.map((item, index) => {
+          {(cart || []).map((item, index) => {
+            // Sécurité : vérifier que l'item existe
+            if (!item) return null;
+
             const realPrice = calculateRealPrice(item);
             const finalPrice = realPrice * (1 - (item.reduction || 0) / 100);
-            const itemTotal = finalPrice * item.quantite_achat;
+            const itemTotal = finalPrice * (item.quantite_achat || 0);
             
             return (
               <motion.div 
@@ -99,10 +104,10 @@ const Cart: React.FC<CartProps> = ({ cart, removeFromCart, updateQuantity }) => 
                     <button
                       onClick={(e) => {
                         e.stopPropagation();
-                        updateQuantity(index, item.quantite_achat - 1);
+                        updateQuantity(index, (item.quantite_achat || 0) - 1);
                       }}
                       className="w-6 h-6 rounded-full bg-gray-100 text-gray-600 hover:bg-gray-200 flex items-center justify-center text-sm"
-                      disabled={item.quantite_achat <= 1}
+                      disabled={(item.quantite_achat || 0) <= 1}
                     >
                       −
                     </button>
@@ -110,7 +115,7 @@ const Cart: React.FC<CartProps> = ({ cart, removeFromCart, updateQuantity }) => 
                     <button
                       onClick={(e) => {
                         e.stopPropagation();
-                        updateQuantity(index, item.quantite_achat + 1);
+                        updateQuantity(index, (item.quantite_achat || 0) + 1);
                       }}
                       className="w-6 h-6 rounded-full bg-gray-100 text-gray-600 hover:bg-gray-200 flex items-center justify-center text-sm"
                     >
@@ -140,7 +145,7 @@ const Cart: React.FC<CartProps> = ({ cart, removeFromCart, updateQuantity }) => 
         </AnimatePresence>
       )}
       
-      {cart.length > 0 && (
+      {(cart && cart.length > 0) && (
         <div className="mt-4 p-3 bg-gradient-to-r from-purple-50 to-pink-50 rounded-xl">
           <div className="flex justify-between items-center text-lg font-bold text-gray-800">
             <span>Total:</span>
