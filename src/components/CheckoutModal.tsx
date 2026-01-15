@@ -34,22 +34,24 @@ const CheckoutModal: React.FC<CheckoutModalProps> = ({
     return item.prix_reference;
   };
 
-  // Calculer le total du panier
-  const total = cart.reduce((sum, item) => {
+  // Calculer le total du panier (Sécurité ajoutée sur .reduce)
+  const total = cart?.reduce((sum, item) => {
+    if (!item) return sum; // Sécurité supplémentaire
     const realPrice = calculateRealPrice(item);
     const finalPrice = realPrice * (1 - (item.reduction || 0) / 100);
-    return sum + (finalPrice * item.quantite_achat);
-  }, 0);
+    return sum + (finalPrice * (item.quantite_achat || 0));
+  }, 0) || 0; // Valeur par défaut si cart est undefined
 
   // Grouper les produits par catégorie avec leurs index globaux
-  const groupedCartWithIndexes = cart.reduce((groups, item, globalIndex) => {
+  const groupedCartWithIndexes = cart?.reduce((groups, item, globalIndex) => {
+    if (!item) return groups; // Sécurité
     const category = item.categorie || 'autres';
     if (!groups[category]) {
       groups[category] = [];
     }
     groups[category].push({ ...item, globalIndex });
     return groups;
-  }, {} as { [key: string]: (CartItem & { globalIndex: number })[] });
+  }, {} as { [key: string]: (CartItem & { globalIndex: number })[] }) || {};
 
   // Noms des catégories avec emojis
   const categoryNames: { [key: string]: string } = {
@@ -113,13 +115,17 @@ const CheckoutModal: React.FC<CheckoutModalProps> = ({
           <div className="mb-6">
             <h3 className="text-lg font-semibold mb-3">Récapitulatif de votre commande</h3>
             <div className="space-y-4">
+              {/* SÉCURITÉ : Ajout de ?. sur Object.entries */}
               {Object.entries(groupedCartWithIndexes).map(([category, items]) => (
                 <div key={category} className="border rounded-lg p-3">
                   <h4 className="font-medium text-purple-600 mb-2">
                     {categoryNames[category] || category}
                   </h4>
                   <div className="space-y-2">
-                    {items.map((item, idx) => {
+                    {items?.map((item, idx) => {
+                      // Sécurité : vérifier que l'item existe
+                      if (!item) return null; 
+                      
                       const realPrice = calculateRealPrice(item);
                       const finalPrice = realPrice * (1 - (item.reduction || 0) / 100);
                       
@@ -135,7 +141,7 @@ const CheckoutModal: React.FC<CheckoutModalProps> = ({
                                   className="w-full h-full object-cover"
                                   onError={(e) => {
                                     const target = e.currentTarget as HTMLImageElement;
-                                    target.src = 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNDgiIGhlaWdodD0iNDgiIHZpZXdCb3g9IjAgMCA0OCA0OCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPHJlY3Qgd2lkdGg9IjQ4IiBoZWlnaHQ9IjQ4IiBmaWxsPSIjRjNGNEY2Ii8+CjxwYXRoIGQ9Ik0yNCAzNkMzMC42Mjc0IDM2IDM2IDMwLjYyNzQgMzYgMjRDMzYgMTcuMzcyNiAzMC42Mjc0IDEyIDI0IDEyQzE3LjM3MjYgMTIgMTIgMTcuMzcyNiAxMiAyNEMxMiAzMC42Mjc0IDE3LjM3MjYgMzYgMjQgMzZaIiBzdHJva2U9IiM5Q0EzQUYiIHN0cm9rZS13aWR0aD0iMiIgc3Ryb2tlLWxpbmVjYXA9InJvdW5kIiBzdHJva2UtbGluZWpvaW49InJvdW5kIi8+CjxwYXRoIGQ9Ik0yNCAyOEMyNi4yMDkxIDI4IDI4IDI2LjIwOTEgMjggMjRDMjggMjEuNzkwOSAyNi4yMDkxIDIwIDI0IDIwQzIxLjc5MDkgMjAgMjAgMjEuNzkwOSAyMCAyNEMyMCAyNi4yMDkxIDIxLjc5MDkgMjggMjQgMjhaIiBzdHJva2U9IiM5Q0EzQUYiIHN0cm9rZS13aWR0aD0iMiIgc3Ryb2tlLWxpbmVjYXA9InJvdW5kIiBzdHJva2UtbGluZWpvaW49InJvdW5kIi8+Cjwvc3ZnPgo=';
+                                    target.src = 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNDgiIGhlaWdodD0iNDgiIHZpZXdCb3g9IjAgMCA0OCA0OCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPHJlY3Qgd2lkdGg9IjQ4IiBoZWlnaHQ9IjQ4IiBmaWxsPSIjRjNGNEY2Ii8+CjxwYXRoIGQ9Ik0yNCAzNkMzMC42Mjc0IDM2IDM2IDMwLjYyNzQgMzYgMjRDMzYgMTcuMzcyNiAzMC42Mjc0IDEyIDI0IDEyQzE3LjM3MjYgMTIgMTIgMTcuMzcyNiAxMiAyNEMxMiAzMC42Mjc0IDE3LjM3MjYgMzYgMjQgMzZaIiBzdHJva2U9IiM5Q0EzQUYiIHN0cm9rZS13aWR0aD0iMiIgc3Ryb2tlLWxpbmVjYXA9InJvdW5kIiBzdHJva2UtbGluZWpvaW49InJvdW5kIi8+CjxwYXRoIGQ9Ik0yNCAyOEMyNi4yMDkxIDI4IDI4IDI2LjIwOTEgMjggMjRDMjggMjEuNzkwOSAyNi4yMDkxIDIwIDI0IDIwQzIxLjc5MDkgMjAgMjAgMjEuNzkwOSAyMCAyNEMyMCAyNi4yMDkxIDIxLjc5MDkgMjggMjQgMjhaIiBzdHJva2U9IiM5Q0EzQUYiIHN0cm9rZS13aWR0aD0iMiIgc3Ryb2tlLWxpbmVjYXA9InJvdW5kIiBzdHJva2UtbGluZWpvaW49InJvdW5kIi8+Cjwvc3ZnPg==';
                                   }}
                                 />
                               ) : (
@@ -167,14 +173,14 @@ const CheckoutModal: React.FC<CheckoutModalProps> = ({
                                   type="button"
                                   onClick={() => updateQuantity(item.globalIndex, item.quantite_achat - 1)}
                                   className="w-6 h-6 rounded-full bg-gray-200 hover:bg-gray-300 flex items-center justify-center text-gray-600 text-sm"
-                                  disabled={item.quantite_achat <= 1}
+                                  disabled={(item.quantite_achat || 0) <= 1}
                                 >
                                   −
                                 </button>
                                 <span className="w-8 text-center text-sm font-medium">{item.quantite_achat}</span>
                                 <button
                                   type="button"
-                                  onClick={() => updateQuantity(item.globalIndex, item.quantite_achat + 1)}
+                                  onClick={() => updateQuantity(item.globalIndex, (item.quantite_achat || 0) + 1)}
                                   className="w-6 h-6 rounded-full bg-gray-200 hover:bg-gray-300 flex items-center justify-center text-gray-600 text-sm"
                                 >
                                   +
@@ -194,7 +200,7 @@ const CheckoutModal: React.FC<CheckoutModalProps> = ({
                           </div>
                           
                           <div className="font-medium">
-                            {(finalPrice * item.quantite_achat).toFixed(2)}€
+                            {(finalPrice * (item.quantite_achat || 0)).toFixed(2)}€
                           </div>
                         </div>
                       );
