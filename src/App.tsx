@@ -32,14 +32,13 @@ const App: React.FC = () => {
   );
   const [loading, setLoading] = useState(false);
   
-  // --- ÉTAT COMMANDES (Ajouté manuellement car il manquait) ---
+  // --- ÉTAT COMMANDES ---
   const [orders, setOrders] = useState<Order[]>(() =>
     loadFromStorage(STORAGE_KEYS.ORDERS, [])
   );
 
   // --- ÉCOUTER LES COMMANDES EN TEMPS RÉEL (SUPABASE) ---
   useEffect(() => {
-    // 1. Charger les commandes existantes au démarrage
     const fetchOrders = async () => {
       const { data, error } = await supabase
         .from('orders')
@@ -53,26 +52,22 @@ const App: React.FC = () => {
 
     fetchOrders();
 
-    // 2. S'abonner aux NOUVELLES commandes
     const channel = supabase
       .channel('public:orders')
       .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'orders' }, (payload) => {
         console.log('🔔 NOUVELLE COMMANDE REÇUE !', payload.new);
         setOrders((prev: Order[]) => {
-          // Vérifier doublon
           if (prev.some(o => o.id === payload.new.id)) return prev;
           return [payload.new as Order, ...prev];
         });
       })
       .subscribe();
 
-    // 3. Nettoyage quand on quitte
     return () => {
       supabase.removeChannel(channel);
     };
   }, []);
 
-  // Sauvegarde automatique des commandes dans le localStorage
   useEffect(() => {
     saveToStorage(STORAGE_KEYS.ORDERS, orders);
   }, [orders]);
@@ -156,7 +151,6 @@ const App: React.FC = () => {
     alert('Magasin réinitialisé avec les données d\'origine');
   };
 
-  // 🚀 OPTIMISATION 3: Mémoriser la fonction de rechargement
   const reloadProductsFromSupabase = useCallback(async () => {
     try {
       console.log('Rechargement des produits depuis Supabase...');
@@ -172,7 +166,6 @@ const App: React.FC = () => {
     }
   }, []);
 
-  // 🚀 OPTIMISATION 4: Mémoriser le calcul de prix
   const calculateRealPrice = useCallback((product: Product) => {
     if (product.quantite_reference && product.quantite_reference > 0) {
       return (product.prix_reference / product.quantite_reference) * 
@@ -181,7 +174,6 @@ const App: React.FC = () => {
     return product.prix_reference;
   }, []);
 
-  // 🚀 OPTIMISATION 5: Mémoriser addToCart pour éviter re-renders
   const addToCart = useCallback(async (product: Product) => {
     const stockQuantity = product.stock_unite ?? 0;
     
@@ -204,7 +196,7 @@ const App: React.FC = () => {
       const newStock = stockQuantity - 1;
       await ProductService.updateStock(product.id, newStock);
       
-      setProducts(prevProducts => prevProducts?.map(p =>
+      setProducts(prevProducts => (prevProducts || []).map(p =>
         p.id === product.id ? { ...p, stock_unite: newStock } : p
       ));
     } catch (error) {
@@ -218,13 +210,13 @@ const App: React.FC = () => {
     setCart(cart.filter((_, i) => i !== index));
 
     try {
-      const product = products.find(p => p.id === removedItem.id);
+      const product = (products || []).find(p => p.id === removedItem.id);
       if (product) {
         const currentStock = product.stock_unite ?? 0;
         const newStock = currentStock + removedItem.quantite_achat;
         await ProductService.updateStock(product.id, newStock);
         
-        setProducts(products?.map(p =>
+        setProducts((products || []).map(p =>
           p.id === removedItem.id ? { ...p, stock_unite: newStock } : p
         ));
       }
@@ -242,7 +234,7 @@ const App: React.FC = () => {
     const item = cart[index];
     const diff = newQuantity - item.quantite_achat;
 
-    const product = products.find(p => p.id === item.id);
+    const product = (products || []).find(p => p.id === item.id);
     if (product) {
       const currentStock = product.stock_unite ?? 0;
       if (diff > 0 && currentStock < diff) {
@@ -261,7 +253,7 @@ const App: React.FC = () => {
         const newStock = currentStock - diff;
         await ProductService.updateStock(product.id, newStock);
         
-        setProducts(products?.map(p =>
+        setProducts((products || []).map(p =>
           p.id === item.id ? { ...p, stock_unite: newStock } : p
         ));
       }
@@ -271,7 +263,7 @@ const App: React.FC = () => {
   }, [cart, products, removeFromCart]);
 
  const handleCheckout = useCallback(async (customerInfo: any) => {
-  const total = cart.reduce((sum, item) => {
+  const total = (cart || []).reduce((sum, item) => {
     const realPrice = calculateRealPrice(item);
     const finalPrice = realPrice * (1 - (item.reduction ?? 0) / 100);
     return sum + finalPrice * item.quantite_achat;
@@ -295,7 +287,6 @@ const App: React.FC = () => {
     await ProductService.saveOrder(newOrder);
     console.log('Commande sauvegardée dans Supabase');
     
-    // 🚀 NOUVEAU : Envoyer l'email de notification
     EmailService.sendOrderNotification(newOrder);
 
     setOrders([newOrder, ...orders]);
@@ -320,8 +311,11 @@ const App: React.FC = () => {
 
   // 🚀 OPTIMISATION 6: Mémoriser le filtrage et le regroupement
 const { filteredProducts, groupedProducts } = useMemo(() => {
+  // SÉCURITÉ : On s'assure que products est bien un tableau
+  const currentProducts = products || [];
+  
   // Filtrage
-  const filtered = products.filter(product => {
+  const filtered = currentProducts.filter(product => {
     const matchesCat = !selectedCat || product.categorie === selectedCat;
     const matchesSearch = !searchTerm ||
       product.nom.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -364,8 +358,8 @@ const { filteredProducts, groupedProducts } = useMemo(() => {
   });
 
   const groupedProducts = Array.from(variantGroups.values())
-    ?.map(group => {
-      const uniqueQuantities = new Set(group?.map(p => p.quantite_reelle));
+    .map(group => {
+      const uniqueQuantities = new Set(group.map(p => p.quantite_reelle));
       
       if (uniqueQuantities.size > 1) {
         return group.sort((a, b) => (a.quantite_reelle || 0) - (b.quantite_reelle || 0));
@@ -444,30 +438,7 @@ const { filteredProducts, groupedProducts } = useMemo(() => {
         </header>
 
         {/* Filtre de catégories */}
-        <div className="flex flex-wrap justify-center gap-2 mb-8">
-          {[
-            { id: null, name: 'Tous', icon: '🛍️' },
-            { id: 'makeup', name: 'Maquillage', icon: '💄' },
-            { id: 'skincare', name: 'Soins Visage', icon: '🧴' },
-            { id: 'bodycare', name: 'Soins Corps', icon: '🧼' },
-            { id: 'haircare', name: 'Cheveux', icon: '💇‍♀️' },
-            { id: 'fragrance', name: 'Parfums', icon: '🌸' },
-            { id: 'accessories', name: 'Accessoires', icon: '✨' }
-          ]?.map(cat => (
-            <button
-              key={cat.id}
-              onClick={() => setSelectedCat(cat.id)}
-              className={`px-3 py-2 md:px-4 md:py-2 rounded-full text-sm md:text-base transition-all ${
-                selectedCat === cat.id
-                  ? 'bg-purple-600 text-white shadow-lg'
-                  : 'bg-white text-gray-700 hover:bg-purple-100'
-              }`}
-            >
-              <span className="mr-1">{cat.icon}</span>
-              {cat.name}
-            </button>
-          ))}
-        </div>
+        <CategoryFilter selectedCat={selectedCat} setSelectedCat={setSelectedCat} />
 
         {/* Indicateur de chargement */}
         {loading && (
@@ -479,9 +450,7 @@ const { filteredProducts, groupedProducts } = useMemo(() => {
              {/* Grille des produits */}
         <motion.div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6 mb-8" layout>
           <AnimatePresence>
-            {/* SÉCURITÉ : On vérifie que groupedProducts existe bien avant de boucler */}
             {groupedProducts?.map((variants, index) => {
-              // Double sécurité : on vérifie que le premier produit existe
               if (!variants || variants.length === 0) return null;
               
               const mainProduct = variants[0];
