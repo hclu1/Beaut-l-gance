@@ -51,7 +51,7 @@ const Cart: React.FC<CartProps> = ({ cart, removeFromCart, updateQuantity }) => 
         </div>
       ) : (
         <AnimatePresence>
-          {(cart || []).map((item, index) => {
+          {(cart || [])?.map((item, index) => {
             // Sécurité : vérifier que l'item existe
             if (!item) return null;
 
