@@ -17,5 +17,15 @@
   <body>
     <div id="root"></div>
     <script type="module" src="/src/main.tsx"></script>
+    <script>
+  window.addEventListener('error', function(e) {
+    console.error("Erreur interceptée :", e.message);
+    console.error("Fichier :", e.filename);
+    console.error("Ligne :", e.lineno);
+    
+    // On affiche une alerte propre pour l'utilisateur
+    alert("Erreur technique : " + e.message);
+  });
+</script>
   </body>
 </html>
