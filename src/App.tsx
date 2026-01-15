@@ -388,9 +388,9 @@ const { filteredProducts, groupedProducts } = useMemo(() => {
         {/* Header avec QR Code */}
         <header className="mb-8">
           <div className="text-center mb-6">
-            <h1 className="text-2xl md:text-4xl font-bold bg-gradient-to-r from-pink-600 to-purple-600 bg-clip-text text-transparent mb-2">
-              Beauté&Élégance 
-            </h1>
+          <h1 className="text-2xl md:text-4xl font-bold bg-gradient-to-r from-pink-600 to-purple-600 bg-clip-text text-transparent mb-2">
+  Beauté&Élégance 
+</h1>
             <p className="text-gray-600 text-sm md:text-base">Votre boutique de beauté exclusive</p>
           </div>
           
