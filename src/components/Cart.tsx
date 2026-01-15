@@ -49,7 +49,7 @@ const Cart: React.FC<CartProps> = ({ cart, removeFromCart, updateQuantity }) => 
         </div>
       ) : (
         <AnimatePresence>
-          {cart.map((item, index) => {
+          {cart?.map((item, index) => {
             const realPrice = calculateRealPrice(item);
             const finalPrice = realPrice * (1 - (item.reduction || 0) / 100);
             const itemTotal = finalPrice * item.quantite_achat;
