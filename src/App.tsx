@@ -204,7 +204,7 @@ const App: React.FC = () => {
       const newStock = stockQuantity - 1;
       await ProductService.updateStock(product.id, newStock);
       
-      setProducts(prevProducts => prevProducts.map(p =>
+      setProducts(prevProducts => prevProducts?.map(p =>
         p.id === product.id ? { ...p, stock_unite: newStock } : p
       ));
     } catch (error) {
@@ -224,7 +224,7 @@ const App: React.FC = () => {
         const newStock = currentStock + removedItem.quantite_achat;
         await ProductService.updateStock(product.id, newStock);
         
-        setProducts(products.map(p =>
+        setProducts(products?.map(p =>
           p.id === removedItem.id ? { ...p, stock_unite: newStock } : p
         ));
       }
@@ -261,7 +261,7 @@ const App: React.FC = () => {
         const newStock = currentStock - diff;
         await ProductService.updateStock(product.id, newStock);
         
-        setProducts(products.map(p =>
+        setProducts(products?.map(p =>
           p.id === item.id ? { ...p, stock_unite: newStock } : p
         ));
       }
@@ -364,8 +364,8 @@ const { filteredProducts, groupedProducts } = useMemo(() => {
   });
 
   const groupedProducts = Array.from(variantGroups.values())
-    .map(group => {
-      const uniqueQuantities = new Set(group.map(p => p.quantite_reelle));
+    ?.map(group => {
+      const uniqueQuantities = new Set(group?.map(p => p.quantite_reelle));
       
       if (uniqueQuantities.size > 1) {
         return group.sort((a, b) => (a.quantite_reelle || 0) - (b.quantite_reelle || 0));
@@ -453,7 +453,7 @@ const { filteredProducts, groupedProducts } = useMemo(() => {
             { id: 'haircare', name: 'Cheveux', icon: '💇‍♀️' },
             { id: 'fragrance', name: 'Parfums', icon: '🌸' },
             { id: 'accessories', name: 'Accessoires', icon: '✨' }
-          ].map(cat => (
+          ]?.map(cat => (
             <button
               key={cat.id}
               onClick={() => setSelectedCat(cat.id)}
