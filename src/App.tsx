@@ -108,23 +108,24 @@ const App: React.FC = () => {
     };
   }, []);
 
-  useEffect(() => {
-    const syncData = extractSyncDataFromUrl();
-    if (syncData) {
-      handleDataSync(syncData);
-      const url = new URL(window.location.href);
-      url.searchParams.delete('sync');
-      window.history.replaceState({}, '', url.toString());
+   useEffect(() => {
+    // On désactive la synchronisation URL temporairement
+    // const syncData = extractSyncDataFromUrl();
+    // if (syncData) {
+    //   handleDataSync(syncData);
+    //   const url = new URL(window.location.href);
+    //   url.searchParams.delete('sync');
+    //   window.history.replaceState({}, '', url.toString());
 
-      setTimeout(() => {
-        alert(`Synchronisation automatique réussie !\n\n` +
-          `${syncData.products.length} produits importés\n` +
-          `${syncData.orders.length} commandes importées\n` +
-          `${new Date(syncData.timestamp).toLocaleString('fr-FR')}\n` +
-          `Depuis: ${syncData.deviceId || 'Appareil inconnu'}\n\n` +
-          `Ce magasin est maintenant synchronisé !`);
-      }, 1000);
-    }
+    //   setTimeout(() => {
+    //     alert(`Synchronisation automatique réussie !\n\n` +
+    //       `${syncData.products.length} produits importés\n` +
+    //       `${syncData.orders.length} commandes importées\n` +
+    //       `${new Date(syncData.timestamp).toLocaleString('fr-FR')}\n` +
+    //       `Depuis: ${syncData.deviceId || 'Appareil inconnu'}\n\n` +
+    //       `Ce magasin est maintenant synchronisé !`);
+    //   }, 1000);
+    // }
   }, []);
 
   const handleDataSync = (syncData: SyncData) => {
