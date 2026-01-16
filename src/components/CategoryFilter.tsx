@@ -19,7 +19,7 @@ interface CategoryFilterProps {
 const CategoryFilter: React.FC<CategoryFilterProps> = ({ selectedCat, setSelectedCat }) => {
   return (
     <div className="flex flex-wrap gap-2 mb-8 justify-center">
-      {CATEGORIES?.map((category) => {
+      {CATEGORIES.map((category) => {
         // SÉCURITÉ : Si une catégorie est mal formatée, on l'ignore
         if (!category || !category.id && category.id !== null) return null;
 
