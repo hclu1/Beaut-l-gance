@@ -372,7 +372,7 @@ const { filteredProducts, groupedProducts } = useMemo(() => {
 }, [products, selectedCat, searchTerm]);
 
   return (
-    <div className="min-h-screen bg-purple-200 ..."> to-pink-100 relative overflow-hidden">
+    <div className="min-h-screen bg-purple-200 ..."> to-pink-100 relative overflow-hidden"
       <div className="absolute inset-0 overflow-hidden pointer-events-none">
         <div className="absolute -top-40 -right-40 w-80 h-80 bg-pink-200 rounded-full opacity-20 blur-3xl"></div>
         <div className="absolute -bottom-40 -left-40 w-80 h-80 bg-purple-200 rounded-full opacity-20 blur-3xl"></div>
