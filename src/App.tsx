@@ -372,7 +372,7 @@ const { filteredProducts, groupedProducts } = useMemo(() => {
 }, [products, selectedCat, searchTerm]);
 
   return (
-    <div className="min-h-screen bg-purple-200 ..."> to-pink-100 relative overflow-hidden"
+    <div className="min-h-screen bg-gradient-to-br from-pink-50 via-purple-50 to-pink-100 relative overflow-hidden">
       <div className="absolute inset-0 overflow-hidden pointer-events-none">
         <div className="absolute -top-40 -right-40 w-80 h-80 bg-pink-200 rounded-full opacity-20 blur-3xl"></div>
         <div className="absolute -bottom-40 -left-40 w-80 h-80 bg-purple-200 rounded-full opacity-20 blur-3xl"></div>
@@ -383,7 +383,7 @@ const { filteredProducts, groupedProducts } = useMemo(() => {
         <header className="mb-8">
           <div className="text-center mb-6">
           <h1 className="text-2xl md:text-4xl font-bold bg-gradient-to-r from-pink-600 to-purple-600 bg-clip-text text-transparent mb-2">
-  Beauté&Élégance
+  TEST DU BON DOSSIER
 </h1>
             <p className="text-gray-600 text-sm md:text-base">Votre boutique de beauté exclusive</p>
           </div>

@@ -1,7 +1,26 @@
+<!doctype html>
+<html lang="fr">
+  <head>
+    <meta charset="UTF-8" />
+    <link rel="icon" href="https://lumi.new/lumi.ing/logo.png" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no" />
+    
+    <!-- Mode plein écran sur mobile -->
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="Beauté&Élégance">
+    
+    <title>Beauté & Élégance - Boutique de Cosmétiques</title>
+    <meta name="description" content="Découvrez notre collection exclusive de produits de beauté et cosmétiques de luxe">
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/main.tsx"></script>
+
     <!-- Script de débogage PRÉCIS -->
     <script>
       window.addEventListener('error', function(e) {
-        // On essaie de récupérer la stack d'erreur (le chemin du fichier)
         let errorMsg = e.message;
         let errorFile = e.filename || "Inconnu";
         
@@ -10,13 +29,13 @@
         console.error("Fichier:", errorFile);
         console.error("Ligne:", e.lineno);
 
-        // On affiche une alerte avec le NOM DU FICHIER
         alert("ERREUR DANS : " + errorFile + "\nMessage: " + errorMsg);
       });
       
-      // Pour attraper les erreurs React qui passent parfois à travers
       window.addEventListener('unhandledrejection', function(e) {
         console.error("🔴 PROMISE REJECTED:", e.reason);
         alert("Erreur asynchrone : " + e.reason);
       });
     </script>
+  </body>
+</html>
