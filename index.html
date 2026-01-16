@@ -1,21 +1,4 @@
-    <!-- Script de débogage AGRESSIF -->
-    <script>
-      // On remplace les méthodes de React pour intercepter les erreurs avant qu'elles ne cassent tout
-      const originalConsoleError = console.error;
-      const originalMap = Array.prototype.map;
-
-      console.error = function(...args) {
-        // Afficher une alerte avec le premier argument (l'erreur)
-        alert("ERREUR INTERCEPTÉE: " + args[0]);
-        originalConsoleError.apply(console, args);
-      };
-
-      // Si un code appelle .map sur undefined, ça plantera ici
-      Array.prototype.map = function(callback) {
-        if (this == null || this == undefined) {
-          alert("MAP APPELÉ SUR UNDEFINED (Vide ou Null)");
-          debugger; // Pose l'exécution
-        }
-        return originalMap.call(this, callback);
-      };
-    </script>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
