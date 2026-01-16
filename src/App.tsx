@@ -26,18 +26,15 @@ const App: React.FC = () => {
   const [showCheckout, setShowCheckout] = useState(false);
   const [showQR, setShowQR] = useState(false);
 
-  // Produits avec état de chargement
   const [products, setProducts] = useState<Product[]>(() => 
     loadFromStorage(STORAGE_KEYS.PRODUCTS, [])
   );
   const [loading, setLoading] = useState(false);
   
-  // --- ÉTAT COMMANDES ---
   const [orders, setOrders] = useState<Order[]>(() =>
     loadFromStorage(STORAGE_KEYS.ORDERS, [])
   );
 
-  // --- ÉCOUTER LES COMMANDES EN TEMPS RÉEL (SUPABASE) ---
   useEffect(() => {
     const fetchOrders = async () => {
       const { data, error } = await supabase
@@ -72,13 +69,11 @@ const App: React.FC = () => {
     saveToStorage(STORAGE_KEYS.ORDERS, orders);
   }, [orders]);
 
-  // 🚀 OPTIMISATION 1: Générer QR Code une seule fois
   const qrCodeUrl = useMemo(() => {
     const currentUrl = window.location.href.split('?')[0];
     return `https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(currentUrl)}`;
   }, []);
 
-  // 🚀 OPTIMISATION 2: Chargement optimisé avec cache
   useEffect(() => {
     let isMounted = true;
     
@@ -113,7 +108,6 @@ const App: React.FC = () => {
     };
   }, []);
 
-  // Synchronisation URL (inchangé)
   useEffect(() => {
     const syncData = extractSyncDataFromUrl();
     if (syncData) {
@@ -196,7 +190,7 @@ const App: React.FC = () => {
       const newStock = stockQuantity - 1;
       await ProductService.updateStock(product.id, newStock);
       
-      setProducts(prevProducts => (prevProducts || []).map(p =>
+      setProducts((prevProducts || []).map(p =>
         p.id === product.id ? { ...p, stock_unite: newStock } : p
       ));
     } catch (error) {
@@ -206,8 +200,8 @@ const App: React.FC = () => {
   }, []);
 
   const removeFromCart = useCallback(async (index: number) => {
-    const removedItem = cart[index];
-    setCart(cart.filter((_, i) => i !== index));
+    const removedItem = (cart || [])[index];
+    setCart((cart || []).filter((_, i) => i !== index));
 
     try {
       const product = (products || []).find(p => p.id === removedItem.id);
@@ -231,7 +225,7 @@ const App: React.FC = () => {
       return;
     }
     
-    const item = cart[index];
+    const item = (cart || [])[index];
     const diff = newQuantity - item.quantite_achat;
 
     const product = (products || []).find(p => p.id === item.id);
@@ -243,7 +237,7 @@ const App: React.FC = () => {
       }
     }
 
-    const updatedCart = [...cart];
+    const updatedCart = [...(cart || [])];
     updatedCart[index].quantite_achat = newQuantity;
     setCart(updatedCart);
 
@@ -275,7 +269,7 @@ const App: React.FC = () => {
       year: 'numeric', month: 'long', day: 'numeric',
       hour: '2-digit', minute: '2-digit'
     }),
-    items: [...cart],
+    items: [...(cart || [])],
     total,
     status: 'pending',
     paymentMode: 'espece',
@@ -309,12 +303,9 @@ const App: React.FC = () => {
   }
 }, [cart, orders, calculateRealPrice]);
 
-  // 🚀 OPTIMISATION 6: Mémoriser le filtrage et le regroupement
-//const { filteredProducts, groupedProducts } = useMemo(() => {
-  // SÉCURITÉ : On s'assure que products est bien un tableau
+  const { filteredProducts, groupedProducts } = useMemo(() => {
   const currentProducts = products || [];
   
-  // Filtrage
   const filtered = currentProducts.filter(product => {
     const matchesCat = !selectedCat || product.categorie === selectedCat;
     const matchesSearch = !searchTerm ||
@@ -326,7 +317,6 @@ const App: React.FC = () => {
     return matchesCat && matchesSearch && hasStock;
   });
 
-  // Regroupement par nom + marque + quantité_reelle
   const uniqueProductsMap = new Map<string, Product>();
 
   filtered.forEach(product => {
@@ -345,7 +335,6 @@ const App: React.FC = () => {
 
   const uniqueProducts = Array.from(uniqueProductsMap.values());
 
-  // Regroupement des variantes
   const variantGroups = new Map<string, Product[]>();
 
   uniqueProducts.forEach(product => {
@@ -369,7 +358,7 @@ const App: React.FC = () => {
     });
 
   return { filteredProducts: filtered, groupedProducts };
-//}, [products, selectedCat, searchTerm]);
+}, [products, selectedCat, searchTerm]);
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-pink-50 via-purple-50 to-pink-100 relative overflow-hidden">
@@ -379,11 +368,10 @@ const App: React.FC = () => {
       </div>
 
       <div className="relative z-10 font-sans pt-4 md:pt-8 pb-12 px-2 md:px-4 max-w-6xl mx-auto">
-        {/* Header avec QR Code */}
         <header className="mb-8">
           <div className="text-center mb-6">
           <h1 className="text-2xl md:text-4xl font-bold bg-gradient-to-r from-pink-600 to-purple-600 bg-clip-text text-transparent mb-2">
-  Beauté&Élégance
+  Beauté&Élégance 
 </h1>
             <p className="text-gray-600 text-sm md:text-base">Votre boutique de beauté exclusive</p>
           </div>
@@ -407,7 +395,6 @@ const App: React.FC = () => {
             </button>
           </div>
 
-          {/* Modal QR Code */}
           {showQR && (
             <motion.div 
               initial={{ opacity: 0, scale: 0.9 }}
@@ -437,22 +424,18 @@ const App: React.FC = () => {
           )}
         </header>
 
-        {/* Filtre de catégories */}
         <CategoryFilter selectedCat={selectedCat} setSelectedCat={setSelectedCat} />
 
-        {/* Indicateur de chargement */}
         {loading && (
           <div className="text-center py-4 text-purple-600">
             Mise à jour des produits...
           </div>
         )}
 
-             {/* Grille des produits */}
-      {/*  <motion.div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6 mb-8" layout>
+        <motion.div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6 mb-8" layout>
           <AnimatePresence>
             {groupedProducts?.map((variants, index) => {
               if (!variants || variants.length === 0) return null;
-              
               const mainProduct = variants[0];
               
               return (
@@ -473,7 +456,7 @@ const App: React.FC = () => {
               );
             })}
           </AnimatePresence>
-        </motion.div>*/}
+        </motion.div>
 
         {(!groupedProducts || groupedProducts.length === 0) && !loading && (
           <motion.div className="text-center py-12" initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
