@@ -237,8 +237,8 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
   };
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-50 p-2 md:p-4 overflow-y-auto">
-      <div className="bg-white rounded-lg w-full max-w-6xl max-h-[95vh] overflow-y-auto">
+    <div className="fixed inset-0 bg-black bg-opacity-75 flex items-start justify-center z-50 p-2 md:p-4 overflow-y-auto">
+      <div className="bg-white rounded-lg w-full max-w-6xl my-2 md:my-4">
         <div className="sticky top-0 bg-white border-b p-3 md:p-4 flex justify-between items-center z-10">
           <h2 className="text-lg md:text-2xl font-bold text-purple-800">Admin Panel</h2>
           <div className="flex gap-2">
@@ -354,7 +354,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
                   <optgroup label="Emplacement">{allEmplacements.map(e => <option key={e} value={`emp:${e}`}>{e}</option>)}</optgroup>
                 </select>
               </div>
-              <div className="space-y-2 max-h-96 overflow-y-auto">
+              <div className="space-y-2">
                 {products.filter(p => {
                   if (selectedBrandOrEmplacement === 'all') return true;
                   if (selectedBrandOrEmplacement.startsWith('brand:')) return p.marque === selectedBrandOrEmplacement.replace('brand:', '');
@@ -378,7 +378,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
                 ))}
               </div>
               {addingVariant && variantBaseProduct && (
-                <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+                <div className="fixed inset-0 bg-black bg-opacity-50 flex items-start justify-center z-50">
                   <div className="bg-white p-6 rounded max-w-2xl w-full max-h-[80vh] overflow-y-auto">
                     <h3 className="font-bold mb-4">Variantes pour {variantBaseProduct.nom}</h3>
                     <div className="space-y-2 mb-4">
