@@ -1,0 +1,68 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Mode plein écran mobile optimisé */
+html, body {
+  min-height: 100vh;
+  min-height: 100dvh;
+  overflow-x: hidden;
+  margin: 0;
+  padding: 0;
+}
+
+/* Support pour iOS et autres navigateurs WebKit */
+@supports (-webkit-touch-callout: none) {
+  html, body {
+    height: -webkit-fill-available;
+  }
+}
+
+/* Gestion des zones sécurisées (notch iPhone, etc.) */
+body {
+  padding-top: env(safe-area-inset-top);
+  padding-bottom: env(safe-area-inset-bottom);
+  padding-left: env(safe-area-inset-left);
+  padding-right: env(safe-area-inset-right);
+}
+
+/* Cache la barre d'adresse sur mobile */
+@media screen and (max-width: 768px) {
+  html {
+    overscroll-behavior: none;
+  }
+  
+  body {
+    width: 100%;
+    overscroll-behavior-y: none;
+  }
+  
+  /* Empêche le zoom sur les inputs */
+  input[type="text"],
+  input[type="number"],
+  input[type="email"],
+  select,
+  textarea {
+    font-size: 16px !important;
+  }
+}
+
+/* Amélioration du scroll sur mobile */
+* {
+  -webkit-tap-highlight-color: transparent;
+  -webkit-overflow-scrolling: touch;
+}
+
+/* Désactive le bounce effect sur iOS */
+html {
+  overscroll-behavior-y: none;
+}
+
+/* Fix pour les modales en plein écran */
+.modal-fullscreen {
+  position: fixed;
+  inset: 0;
+  width: 100vw;
+  height: 100vh;
+  height: 100dvh;
+}
