@@ -206,7 +206,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
     try { await ProductService.updateOrderPreparedItems(orderId, newPreparedItems); } catch (e) { console.error(e); }
   };
 
-  const allItemsPrepared = (order: Order) => order.items.every(item => order.preparedItems?.[String(item.id)] === true);
+  const allItemsPrepared = (order: Order) => (order.items ?? []).every(item => order.preparedItems?.[String(item.id)] === true);
 
   const handleDuplicateProduct = (product: Product) => {
     setNewProduct({
