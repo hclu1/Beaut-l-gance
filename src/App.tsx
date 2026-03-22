@@ -511,11 +511,11 @@ const App: React.FC = () => {
           >
             ⚙️
           </button>
-          {/* Version affichée à droite de la roue crantée */}
+        )}
+        {/* Version affichée à droite de la roue crantée */}
         <span className="fixed top-5 left-14 md:left-16 text-xs text-gray-400 opacity-30 hover:opacity-100 transition-opacity z-30 select-none">
           v{__APP_VERSION__}
         </span>
-        )}
 
         {admin && (
           <AdminPanel
