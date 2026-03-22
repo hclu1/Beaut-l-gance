@@ -1,6 +1,7 @@
 // Définition de l'interface Product qui représente un produit dans la boutique
 export interface Product {
-  id: string | number; // Identifiant unique du produit dans la base de données  nom: string; // Nom du produit (ex: "Rouge à lèvres mat")
+  id: string | number; // Identifiant unique du produit danid: string | number; // Identifiant unique du produit dans la base de données
+  nom: string; // Nom du produit (ex: "Rouge à lèvres mat")s la base de données  nom: string; // Nom du produit (ex: "Rouge à lèvres mat")
   marque: string; // Marque du produit (ex: "L'Oréal")
   prix_reference: number; // Prix de référence trouvé sur internet pour la quantité de référence
   reduction: number; // Pourcentage de réduction appliqué au produit (ex: 10 pour 10%)

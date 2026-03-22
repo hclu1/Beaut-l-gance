@@ -412,7 +412,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
                     </div>
                   </div>
                   <div className="space-y-2 mb-3">
-                    {order.items.map((item, i) => {
+                    {(order.items || []).map((item, i) => {
                       const isPrepared = order.preparedItems?.[String(item.id)];
                       return (
                         <div key={i} className={`flex justify-between p-2 rounded text-xs border ${isPrepared ? 'bg-green-50 border-green-200' : 'bg-gray-50'}`}>

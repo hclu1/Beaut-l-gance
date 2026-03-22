@@ -21,11 +21,11 @@ const OrderDetailModal: React.FC<OrderDetailModalProps> = ({
     return order.preparedItems?.[itemId] || false;
   };
 
-  const preparedCount = order.items.reduce((count, item) => {
-    return count + (isItemPrepared(item.id) ? item.quantite_achat : 0);
+  const preparedCount = (order.items || []).reduce((count, item) => {
+    return count + (isItemPrepared(String(item.id)) ? item.quantite_achat : 0);
   }, 0);
 
-  const totalItems = order.items.reduce((sum, item) => sum + item.quantite_achat, 0);
+  const totalItems = (order.items || []).reduce((sum, item) => sum + item.quantite_achat, 0);
 
   return (
     <motion.div
@@ -150,17 +150,17 @@ const OrderDetailModal: React.FC<OrderDetailModalProps> = ({
             📦 Produits à préparer ({totalItems} articles)
           </h4>
           <div className="space-y-3">
-            {order.items.map((item, index) => {
-              const isPrepared = isItemPrepared(item.id);
+            {(order.items || []).map((item, index) => {
+              const isPrepared = isItemPrepared(String(item.id));
               return (
                 <div key={index} className={`bg-white p-4 rounded-lg border-2 transition-all duration-300 ${isPrepared ? 'border-green-400 bg-green-50' : 'border-gray-200'
                   }`}>
                   <div className="flex items-center gap-4">
                     <motion.button
-                      onClick={() => onToggleItemPrepared(order.id, item.id)}
+                      onClick={() => onToggleItemPrepared(order.id, String(item.id))}
                       className={`w-8 h-8 rounded-full border-2 flex items-center justify-center transition-all duration-300 ${isPrepared
-                          ? 'bg-green-500 border-green-500 text-white'
-                          : 'border-gray-300 hover:border-green-400 hover:bg-green-50'
+                        ? 'bg-green-500 border-green-500 text-white'
+                        : 'border-gray-300 hover:border-green-400 hover:bg-green-50'
                         }`}
                       whileHover={{ scale: 1.1 }}
                       whileTap={{ scale: 0.9 }}
@@ -170,7 +170,7 @@ const OrderDetailModal: React.FC<OrderDetailModalProps> = ({
                     </motion.button>
 
                     <img
-                      src={item.image}
+                      src={item.image_url}
                       alt={item.nom}
                       className={`w-16 h-16 object-cover rounded-lg transition-all duration-300 ${isPrepared ? 'opacity-75' : ''
                         }`}
@@ -184,7 +184,7 @@ const OrderDetailModal: React.FC<OrderDetailModalProps> = ({
                       <p className="text-sm text-gray-600">{item.marque} - {item.categorie}</p>
                       <div className="flex flex-col items-center gap-2 mt-2 text-sm">
                         <span>Quantité: <strong className="text-purple-600">{item.quantite_achat}</strong></span>
-                        <span>Emplacement: <strong className="text-red-600 bg-red-100 px-2 py-1 rounded">{item.emplacement}</strong></span>
+                        <span>Emplacement: <strong className="text-red-600 bg-red-100 px-2 py-1 rounded">{item.emplacement_stock || 'Non renseigné'}</strong></span>
                       </div>
                     </div>
 
