@@ -1,5 +1,8 @@
 import react from '@vitejs/plugin-react-swc'
 import { defineConfig, UserConfig } from 'vite'
+import { readFileSync } from 'fs'
+
+const pkg = JSON.parse(readFileSync('./package.json', 'utf-8'))
 
 // https://vitejs.dev/config/
 export default defineConfig(({ mode }) => {
@@ -18,6 +21,7 @@ export default defineConfig(({ mode }) => {
       'process.env.NODE_ENV': '"development"',
       __DEV__: 'true',
       global: 'globalThis',
+      __APP_VERSION__: JSON.stringify(pkg.version),
     }
   } else {
     // Configuration pour production
@@ -31,6 +35,7 @@ export default defineConfig(({ mode }) => {
 
     define = {
       global: 'globalThis',
+      __APP_VERSION__: JSON.stringify(pkg.version),
     }
   }
 

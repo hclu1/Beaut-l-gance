@@ -2,10 +2,10 @@ import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Product, Order, CartItem, SyncData } from './types';
 import { initialProducts, SHOP_CONFIG, STORAGE_KEYS } from './constants';
-import { supabase } from './services/productService'; 
-import { 
-  saveToStorage, 
-  loadFromStorage, 
+import { supabase } from './services/productService';
+import {
+  saveToStorage,
+  loadFromStorage,
   extractSyncDataFromUrl,
 } from './utils';
 import Header from './components/Header';
@@ -16,7 +16,7 @@ import FloatingCartIcon from './components/FloatingCartIcon';
 import CheckoutModal from './components/CheckoutModal';
 import AdminPanel from './components/AdminPanel';
 import { ProductService } from './services/productService';
-import { EmailService } from './services/emailService'; 
+import { EmailService } from './services/emailService';
 
 const App: React.FC = () => {
   const [selectedCat, setSelectedCat] = useState<string | null>(null);
@@ -26,11 +26,11 @@ const App: React.FC = () => {
   const [showCheckout, setShowCheckout] = useState(false);
   const [showQR, setShowQR] = useState(false);
 
-  const [products, setProducts] = useState<Product[]>(() => 
+  const [products, setProducts] = useState<Product[]>(() =>
     loadFromStorage(STORAGE_KEYS.PRODUCTS, [])
   );
   const [loading, setLoading] = useState(false);
-  
+
   const [orders, setOrders] = useState<Order[]>(() =>
     loadFromStorage(STORAGE_KEYS.ORDERS, [])
   );
@@ -41,7 +41,7 @@ const App: React.FC = () => {
         .from('orders')
         .select('*')
         .order('created_at', { ascending: false });
-      
+
       if (!error && data) {
         setOrders(data);
       }
@@ -76,7 +76,7 @@ const App: React.FC = () => {
 
   useEffect(() => {
     let isMounted = true;
-    
+
     const loadProducts = async () => {
       const cachedProducts = loadFromStorage(STORAGE_KEYS.PRODUCTS, []);
       if (cachedProducts.length > 0) {
@@ -86,7 +86,7 @@ const App: React.FC = () => {
       try {
         setLoading(true);
         const data = await ProductService.getAllProducts();
-        
+
         if (isMounted) {
           setProducts(data);
           saveToStorage(STORAGE_KEYS.PRODUCTS, data);
@@ -108,7 +108,7 @@ const App: React.FC = () => {
     };
   }, []);
 
-   useEffect(() => {
+  useEffect(() => {
     // On désactive la synchronisation URL temporairement
     // const syncData = extractSyncDataFromUrl();
     // if (syncData) {
@@ -130,7 +130,7 @@ const App: React.FC = () => {
 
   const handleDataSync = (syncData: SyncData) => {
     if (!syncData.products || !Array.isArray(syncData.products) ||
-        !syncData.orders || !Array.isArray(syncData.orders)) {
+      !syncData.orders || !Array.isArray(syncData.orders)) {
       console.error('Données de synchronisation invalides');
       return;
     }
@@ -163,66 +163,66 @@ const App: React.FC = () => {
 
   const calculateRealPrice = useCallback((product: Product) => {
     if (product.quantite_reference && product.quantite_reference > 0) {
-      return (product.prix_reference / product.quantite_reference) * 
-             (product.quantite_reelle || product.quantite_reference);
+      return (product.prix_reference / product.quantite_reference) *
+        (product.quantite_reelle || product.quantite_reference);
     }
     return product.prix_reference;
   }, []);
 
- const addToCart = useCallback(async (product: Product) => {
-  const stockQuantity = product.stock_unite ?? 0;
-  
-  if (stockQuantity <= 0) {
-    alert('Produit en rupture de stock');
-    return;
-  }
+  const addToCart = useCallback(async (product: Product) => {
+    const stockQuantity = product.stock_unite ?? 0;
 
-  // Vérifier si la quantité dans le panier ne dépasse pas le stock
-  const currentCartQuantity = cart.find(item => item.id === product.id)?.quantite_achat ?? 0;
-  if (currentCartQuantity >= stockQuantity) {
-    alert('Stock insuffisant pour cette quantité');
-    return;
-  }
-
-  setCart(prevCart => {
-    const index = prevCart.findIndex(item => item.id === product.id);
-    if (index !== -1) {
-      const updatedCart = [...prevCart];
-      updatedCart[index].quantite_achat += 1;
-      return updatedCart;
+    if (stockQuantity <= 0) {
+      alert('Produit en rupture de stock');
+      return;
     }
-    return [...prevCart, { ...product, quantite_achat: 1 }];
-  });
 
-  try {
-    const newStock = stockQuantity - 1;
-    await ProductService.updateStock(product.id, newStock);
-    
-    setProducts(prevProducts => 
-      (prevProducts || []).map(p =>
-        p.id === product.id ? { ...p, stock_unite: newStock } : p
-      )
-    );
-  } catch (error) {
-    console.error('Erreur mise à jour stock:', error);
-    alert('Erreur lors de la mise à jour du stock');
-    
-    // Rollback du panier en cas d'erreur
+    // Vérifier si la quantité dans le panier ne dépasse pas le stock
+    const currentCartQuantity = cart.find(item => item.id === product.id)?.quantite_achat ?? 0;
+    if (currentCartQuantity >= stockQuantity) {
+      alert('Stock insuffisant pour cette quantité');
+      return;
+    }
+
     setCart(prevCart => {
       const index = prevCart.findIndex(item => item.id === product.id);
       if (index !== -1) {
         const updatedCart = [...prevCart];
-        if (updatedCart[index].quantite_achat > 1) {
-          updatedCart[index].quantite_achat -= 1;
-        } else {
-          updatedCart.splice(index, 1);
-        }
+        updatedCart[index].quantite_achat += 1;
         return updatedCart;
       }
-      return prevCart;
+      return [...prevCart, { ...product, quantite_achat: 1 }];
     });
-  }
-}, [cart]);// Add cart to dependencies
+
+    try {
+      const newStock = stockQuantity - 1;
+      await ProductService.updateStock(product.id, newStock);
+
+      setProducts(prevProducts =>
+        (prevProducts || []).map(p =>
+          p.id === product.id ? { ...p, stock_unite: newStock } : p
+        )
+      );
+    } catch (error) {
+      console.error('Erreur mise à jour stock:', error);
+      alert('Erreur lors de la mise à jour du stock');
+
+      // Rollback du panier en cas d'erreur
+      setCart(prevCart => {
+        const index = prevCart.findIndex(item => item.id === product.id);
+        if (index !== -1) {
+          const updatedCart = [...prevCart];
+          if (updatedCart[index].quantite_achat > 1) {
+            updatedCart[index].quantite_achat -= 1;
+          } else {
+            updatedCart.splice(index, 1);
+          }
+          return updatedCart;
+        }
+        return prevCart;
+      });
+    }
+  }, [cart]);// Add cart to dependencies
 
   const removeFromCart = useCallback(async (index: number) => {
     const removedItem = (cart || [])[index];
@@ -234,7 +234,7 @@ const App: React.FC = () => {
         const currentStock = product.stock_unite ?? 0;
         const newStock = currentStock + removedItem.quantite_achat;
         await ProductService.updateStock(product.id, newStock);
-        
+
         setProducts((products || []).map(p =>
           p.id === removedItem.id ? { ...p, stock_unite: newStock } : p
         ));
@@ -249,7 +249,7 @@ const App: React.FC = () => {
       removeFromCart(index);
       return;
     }
-    
+
     const item = (cart || [])[index];
     const diff = newQuantity - item.quantite_achat;
 
@@ -271,7 +271,7 @@ const App: React.FC = () => {
         const currentStock = product.stock_unite ?? 0;
         const newStock = currentStock - diff;
         await ProductService.updateStock(product.id, newStock);
-        
+
         setProducts((products || []).map(p =>
           p.id === item.id ? { ...p, stock_unite: newStock } : p
         ));
@@ -281,109 +281,109 @@ const App: React.FC = () => {
     }
   }, [cart, products, removeFromCart]);
 
- const handleCheckout = useCallback(async (customerInfo: any) => {
-  const total = (cart || []).reduce((sum, item) => {
-    const realPrice = calculateRealPrice(item);
-    const finalPrice = realPrice * (1 - (item.reduction ?? 0) / 100);
-    return sum + finalPrice * item.quantite_achat;
-  }, 0);
+  const handleCheckout = useCallback(async (customerInfo: any) => {
+    const total = (cart || []).reduce((sum, item) => {
+      const realPrice = calculateRealPrice(item);
+      const finalPrice = realPrice * (1 - (item.reduction ?? 0) / 100);
+      return sum + finalPrice * item.quantite_achat;
+    }, 0);
 
-  const newOrder: Order = {
-    id: Date.now().toString(),
-    date: new Date().toLocaleDateString('fr-FR', {
-      year: 'numeric', month: 'long', day: 'numeric',
-      hour: '2-digit', minute: '2-digit'
-    }),
-    items: [...(cart || [])],
-    total,
-    status: 'pending',
-    paymentMode: 'espece',
-    customerInfo,
-    preparedItems: {}
-  };
+    const newOrder: Order = {
+      id: Date.now().toString(),
+      date: new Date().toLocaleDateString('fr-FR', {
+        year: 'numeric', month: 'long', day: 'numeric',
+        hour: '2-digit', minute: '2-digit'
+      }),
+      items: [...(cart || [])],
+      total,
+      status: 'pending',
+      paymentMode: 'espece',
+      customerInfo,
+      preparedItems: {}
+    };
 
-  try {
-    await ProductService.saveOrder(newOrder);
-    console.log('Commande sauvegardée dans Supabase');
-    
-    EmailService.sendOrderNotification(newOrder);
+    try {
+      await ProductService.saveOrder(newOrder);
+      console.log('Commande sauvegardée dans Supabase');
 
-    setOrders([newOrder, ...orders]);
-    setCart([]);
-    setShowCheckout(false);
+      EmailService.sendOrderNotification(newOrder);
 
-    const customerName = customerInfo.nom && customerInfo.prenom
-      ? `${customerInfo.prenom} ${customerInfo.nom}`
-      : customerInfo.nom || customerInfo.prenom || 'Client';
+      setOrders([newOrder, ...orders]);
+      setCart([]);
+      setShowCheckout(false);
 
-    alert(`Commande validée pour ${customerName}!\nNuméro: #${newOrder.id}\nSauvegardée dans Supabase.`);
-  } catch (error) {
-    console.error('Erreur sauvegarde commande:', error);
-    
-    setOrders([newOrder, ...orders]);
-    setCart([]);
-    setShowCheckout(false);
-    
-    alert(`Commande validée mais erreur de sauvegarde Supabase.\nCommande sauvegardée localement.`);
-  }
-}, [cart, orders, calculateRealPrice]);
+      const customerName = customerInfo.nom && customerInfo.prenom
+        ? `${customerInfo.prenom} ${customerInfo.nom}`
+        : customerInfo.nom || customerInfo.prenom || 'Client';
+
+      alert(`Commande validée pour ${customerName}!\nNuméro: #${newOrder.id}\nSauvegardée dans Supabase.`);
+    } catch (error) {
+      console.error('Erreur sauvegarde commande:', error);
+
+      setOrders([newOrder, ...orders]);
+      setCart([]);
+      setShowCheckout(false);
+
+      alert(`Commande validée mais erreur de sauvegarde Supabase.\nCommande sauvegardée localement.`);
+    }
+  }, [cart, orders, calculateRealPrice]);
 
   const { filteredProducts, groupedProducts } = useMemo(() => {
-  const currentProducts = products || [];
-  
-  const filtered = currentProducts.filter(product => {
-    const matchesCat = !selectedCat || product.categorie === selectedCat;
-    const matchesSearch = !searchTerm ||
-      product.nom.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      product.marque.toLowerCase().includes(searchTerm.toLowerCase());
-    
-    const hasStock = (product.stock_unite ?? 0) > 0;
-    
-    return matchesCat && matchesSearch && hasStock;
-  });
+    const currentProducts = products || [];
 
-  const uniqueProductsMap = new Map<string, Product>();
+    const filtered = currentProducts.filter(product => {
+      const matchesCat = !selectedCat || product.categorie === selectedCat;
+      const matchesSearch = !searchTerm ||
+        product.nom.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        product.marque.toLowerCase().includes(searchTerm.toLowerCase());
 
-  filtered.forEach(product => {
-    const key = `${product.nom.toLowerCase()}-${product.marque.toLowerCase()}-${product.quantite_reelle || 0}ml`;
-    
-    if (uniqueProductsMap.has(key)) {
-      const existing = uniqueProductsMap.get(key)!;
-      uniqueProductsMap.set(key, {
-        ...existing,
-        stock_unite: (existing.stock_unite || 0) + (product.stock_unite || 0)
-      });
-    } else {
-      uniqueProductsMap.set(key, { ...product });
-    }
-  });
+      const hasStock = (product.stock_unite ?? 0) > 0;
 
-  const uniqueProducts = Array.from(uniqueProductsMap.values());
+      return matchesCat && matchesSearch && hasStock;
+    });
 
-  const variantGroups = new Map<string, Product[]>();
+    const uniqueProductsMap = new Map<string, Product>();
 
-  uniqueProducts.forEach(product => {
-    const baseKey = `${product.nom.toLowerCase()}-${product.marque.toLowerCase()}`;
-    
-    if (!variantGroups.has(baseKey)) {
-      variantGroups.set(baseKey, []);
-    }
-    variantGroups.get(baseKey)!.push(product);
-  });
+    filtered.forEach(product => {
+      const key = `${product.nom.toLowerCase()}-${product.marque.toLowerCase()}-${product.quantite_reelle || 0}ml`;
 
-  const groupedProducts = Array.from(variantGroups.values())
-    .map(group => {
-      const uniqueQuantities = new Set(group.map(p => p.quantite_reelle));
-      
-      if (uniqueQuantities.size > 1) {
-        return group.sort((a, b) => (a.quantite_reelle || 0) - (b.quantite_reelle || 0));
+      if (uniqueProductsMap.has(key)) {
+        const existing = uniqueProductsMap.get(key)!;
+        uniqueProductsMap.set(key, {
+          ...existing,
+          stock_unite: (existing.stock_unite || 0) + (product.stock_unite || 0)
+        });
       } else {
-        return [group[0]];
+        uniqueProductsMap.set(key, { ...product });
       }
     });
 
-  return { filteredProducts: filtered, groupedProducts };
-}, [products, selectedCat, searchTerm]);
+    const uniqueProducts = Array.from(uniqueProductsMap.values());
+
+    const variantGroups = new Map<string, Product[]>();
+
+    uniqueProducts.forEach(product => {
+      const baseKey = `${product.nom.toLowerCase()}-${product.marque.toLowerCase()}`;
+
+      if (!variantGroups.has(baseKey)) {
+        variantGroups.set(baseKey, []);
+      }
+      variantGroups.get(baseKey)!.push(product);
+    });
+
+    const groupedProducts = Array.from(variantGroups.values())
+      .map(group => {
+        const uniqueQuantities = new Set(group.map(p => p.quantite_reelle));
+
+        if (uniqueQuantities.size > 1) {
+          return group.sort((a, b) => (a.quantite_reelle || 0) - (b.quantite_reelle || 0));
+        } else {
+          return [group[0]];
+        }
+      });
+
+    return { filteredProducts: filtered, groupedProducts };
+  }, [products, selectedCat, searchTerm]);
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-pink-50 via-purple-50 to-pink-100 relative overflow-hidden">
@@ -395,12 +395,12 @@ const App: React.FC = () => {
       <div className="relative z-10 font-sans pt-4 md:pt-8 pb-12 px-2 md:px-4 max-w-6xl mx-auto">
         <header className="mb-8">
           <div className="text-center mb-6">
-          <h1 className="text-2xl md:text-4xl font-bold bg-gradient-to-r from-pink-600 to-purple-600 bg-clip-text text-transparent mb-2">
-  Beauté&Élégance  
-</h1>
+            <h1 className="text-2xl md:text-4xl font-bold bg-gradient-to-r from-pink-600 to-purple-600 bg-clip-text text-transparent mb-2">
+              Beauté&Élégance
+            </h1>
             <p className="text-gray-600 text-sm md:text-base">Votre boutique de beauté exclusive</p>
           </div>
-          
+
           <div className="flex flex-col sm:flex-row gap-4 items-center justify-between">
             <div className="flex-1 w-full sm:max-w-md">
               <input
@@ -411,7 +411,7 @@ const App: React.FC = () => {
                 className="w-full px-4 py-2 border border-gray-300 rounded-full focus:outline-none focus:ring-2 focus:ring-purple-500"
               />
             </div>
-            
+
             <button
               onClick={() => setShowQR(!showQR)}
               className="px-4 py-2 bg-purple-600 text-white rounded-full hover:bg-purple-700 transition-colors text-sm md:text-base"
@@ -421,7 +421,7 @@ const App: React.FC = () => {
           </div>
 
           {showQR && (
-            <motion.div 
+            <motion.div
               initial={{ opacity: 0, scale: 0.9 }}
               animate={{ opacity: 1, scale: 1 }}
               className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4"
@@ -429,7 +429,7 @@ const App: React.FC = () => {
             >
               <div className="bg-white rounded-lg p-6 text-center max-w-sm w-full" onClick={e => e.stopPropagation()}>
                 <h3 className="text-lg font-bold mb-4">Partager la boutique</h3>
-                <img 
+                <img
                   src={qrCodeUrl}
                   alt="QR Code"
                   className="mx-auto mb-4 border rounded"
@@ -462,7 +462,7 @@ const App: React.FC = () => {
             {groupedProducts?.map((variants, index) => {
               if (!variants || variants.length === 0) return null;
               const mainProduct = variants[0];
-              
+
               return (
                 <motion.div
                   key={mainProduct.id}
@@ -511,16 +511,20 @@ const App: React.FC = () => {
           >
             ⚙️
           </button>
+          {/* Version affichée à droite de la roue crantée */}
+        <span className="fixed top-5 left-14 md:left-16 text-xs text-gray-400 opacity-30 hover:opacity-100 transition-opacity z-30 select-none">
+          v{__APP_VERSION__}
+        </span>
         )}
 
-       {admin && (
-  <AdminPanel
-    products={products}
-    setProducts={setProducts}
-    orders={orders}
-    setOrders={setOrders}
-    onReloadProducts={reloadProductsFromSupabase}
-    setAdmin={setAdmin}
+        {admin && (
+          <AdminPanel
+            products={products}
+            setProducts={setProducts}
+            orders={orders}
+            setOrders={setOrders}
+            onReloadProducts={reloadProductsFromSupabase}
+            setAdmin={setAdmin}
           />
         )}
 
