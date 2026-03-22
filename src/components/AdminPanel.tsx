@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { Product, Order } from './types';
-import { ProductService } from './productService';
+import { Product, Order } from '../types';
+import { ProductService } from '../services/productService';
 import { QRCodeSVG } from 'qrcode.react';
 
 interface AdminPanelProps {
