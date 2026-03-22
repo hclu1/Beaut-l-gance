@@ -365,7 +365,7 @@ export const ProductService = {
         paymentMode: order.payment_mode,
         customerInfo: order.customer_info,
         preparedItems: order.prepared_items,
-        items: order.order_items.map((item: any) => ({
+        items: (order.order_items || []).map((item: any) => ({
           id: item.product_id,
           nom: item.nom,
           marque: item.marque,
