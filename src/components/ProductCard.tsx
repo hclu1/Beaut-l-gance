@@ -51,7 +51,7 @@ const ProductCard: React.FC<ProductCardProps> = React.memo(({ product, variants 
     const red = selectedVariant.reduction || 0;
     const final = base * (1 - red / 100);
     const stock = selectedVariant.stock_unite ?? 0;
-    
+
     return {
       basePrice: base,
       finalPrice: final,
@@ -80,7 +80,7 @@ const ProductCard: React.FC<ProductCardProps> = React.memo(({ product, variants 
   const hasMultipleVariants = allVariants.length > 1;
 
   // 🚀 OPTIMISATION: Mémoriser la description tronquée
-  const truncatedDescription = useMemo(() => 
+  const truncatedDescription = useMemo(() =>
     selectedVariant.description ? selectedVariant.description.slice(0, 150) : '',
     [selectedVariant.description]
   );
@@ -196,7 +196,7 @@ const ProductCard: React.FC<ProductCardProps> = React.memo(({ product, variants 
                           const variantBasePrice = calculateRealPrice(v);
                           const variantReduction = v.reduction || 0;
                           const variantFinalPrice = variantBasePrice * (1 - variantReduction / 100);
-                          
+
                           return (
                             <option key={v.id} value={v.id}>
                               {v.quantite_reelle}ml - {variantFinalPrice.toFixed(2)}€
@@ -264,7 +264,7 @@ const ProductCard: React.FC<ProductCardProps> = React.memo(({ product, variants 
     prevProps.product.id === nextProps.product.id &&
     prevProps.product.stock_unite === nextProps.product.stock_unite &&
     prevProps.product.reduction === nextProps.product.reduction &&
-    prevProps.variants.length === nextProps.variants.length
+    (prevProps.variants ?? []).length === (nextProps.variants ?? []).length
   );
 });
 
