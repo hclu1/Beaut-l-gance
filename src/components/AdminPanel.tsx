@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { Product, Order } from '../types';
-import { ProductService } from '../services/productService';
+import { Product, Order } from './types';
+import { ProductService } from './productService';
 import { QRCodeSVG } from 'qrcode.react';
 
 interface AdminPanelProps {
@@ -186,7 +186,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
   };
 
   const handleOrderStatusChange = async (orderId: string, newStatus: string) => {
-    const updatedOrders = orders.map(o => o.id === orderId ? { ...o, status: newStatus } : o);
+    const updatedOrders = orders.map(o => o.id === orderId ? { ...o, status: newStatus as Order['status'] } : o);
     setOrders(updatedOrders);
     try { await ProductService.updateOrderStatus(orderId, newStatus); } catch (e) { console.error(e); }
   };
@@ -206,7 +206,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
     try { await ProductService.updateOrderPreparedItems(orderId, newPreparedItems); } catch (e) { console.error(e); }
   };
 
-  const allItemsPrepared = (order: Order) => order.items.every(item => order.preparedItems?.[item.id] === true);
+  const allItemsPrepared = (order: Order) => order.items.every(item => order.preparedItems?.[String(item.id)] === true);
 
   const handleDuplicateProduct = (product: Product) => {
     setNewProduct({
@@ -407,16 +407,16 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
                       <p className="text-xs text-gray-500">{order.date}</p>
                     </div>
                     <div className="flex gap-2">
-                      <select value={order.status} onChange={e => handleOrderStatusChange(order.id, e.target.value)} className={`px-2 py-1 rounded text-xs font-bold ${order.status === 'completed' ? 'bg-green-100 text-green-800' : order.status === 'processing' ? 'bg-yellow-100 text-yellow-800' : 'bg-gray-100'}`}><option value="pending">En attente</option><option value="processing">Préparation</option><option value="completed">Terminée</option></select>
+                      <select value={order.status} onChange={e => handleOrderStatusChange(order.id, e.target.value)} className={`px-2 py-1 rounded text-xs font-bold ${order.status === 'delivered' ? 'bg-green-100 text-green-800' : order.status === 'preparing' ? 'bg-yellow-100 text-yellow-800' : order.status === 'ready' ? 'bg-blue-100 text-blue-800' : 'bg-gray-100'}`}><option value="pending">En attente</option><option value="preparing">En préparation</option><option value="ready">Prêt</option><option value="delivered">Livré</option></select>
                       <button onClick={() => handleDeleteOrder(order.id)} className="bg-red-500 text-white px-2 py-1 rounded text-xs">🗑️</button>
                     </div>
                   </div>
                   <div className="space-y-2 mb-3">
                     {order.items.map((item, i) => {
-                      const isPrepared = order.preparedItems?.[item.id];
+                      const isPrepared = order.preparedItems?.[String(item.id)];
                       return (
                         <div key={i} className={`flex justify-between p-2 rounded text-xs border ${isPrepared ? 'bg-green-50 border-green-200' : 'bg-gray-50'}`}>
-                          <div className="flex items-center gap-2"><input type="checkbox" checked={!!isPrepared} onChange={() => togglePreparedItem(order.id, item.id)} className="w-4 h-4" /><span className={isPrepared ? 'line-through text-gray-500' : ''}>{item.nom} x{item.quantite_achat || 1}</span></div>
+                          <div className="flex items-center gap-2"><input type="checkbox" checked={!!isPrepared} onChange={() => togglePreparedItem(order.id, String(item.id))} className="w-4 h-4" /><span className={isPrepared ? 'line-through text-gray-500' : ''}>{item.nom} x{item.quantite_achat || 1}</span></div>
                           <span className="font-bold">{((item.prix_reference / (item.quantite_reference || 1)) * (item.quantite_reelle || item.quantite_reference) * (1 - (item.reduction || 0) / 100) * (item.quantite_achat || 1)).toFixed(2)}€</span>
                         </div>
                       );

@@ -27,12 +27,12 @@ const CACHE_DURATION = 5 * 60 * 1000; // 5 minutes
 const generateVariantId = (nom: string, marque: string, quantiteReelle?: number): string => {
   const baseName = nom.toLowerCase().replace(/\s+/g, '-');
   const baseBrand = marque.toLowerCase().replace(/\s+/g, '-');
-  
+
   // Si quantite_reelle est fournie, créer un ID unique pour cette quantité
   if (quantiteReelle && quantiteReelle > 0) {
     return `${baseName}-${baseBrand}-${quantiteReelle}ml`;
   }
-  
+
   // Sinon, ID de base sans quantité
   return `${baseName}-${baseBrand}`;
 };
@@ -47,7 +47,7 @@ export const ProductService = {
   async uploadImage(file: File): Promise<string> {
     try {
       console.log('ProductService: Upload image...', file.name);
-      
+
       const fileExt = file.name.split('.').pop();
       const fileName = `${Math.random()}-${Date.now()}.${fileExt}`;
       const filePath = fileName;
@@ -64,10 +64,10 @@ export const ProductService = {
         throw error;
       }
 
-     // Récupérer l'URL publique DIRECTE (sans transformation pour éviter les erreurs CORS)
-const { data: { publicUrl } } = supabase.storage
-  .from('product-images')
-  .getPublicUrl(filePath);
+      // Récupérer l'URL publique DIRECTE (sans transformation pour éviter les erreurs CORS)
+      const { data: { publicUrl } } = supabase.storage
+        .from('product-images')
+        .getPublicUrl(filePath);
 
 
       console.log('Image uploadée:', publicUrl);
@@ -84,7 +84,7 @@ const { data: { publicUrl } } = supabase.storage
       if (!fileName) return;
 
       console.log('ProductService: Suppression image...', fileName);
-      
+
       const { error } = await supabase.storage
         .from('product-images')
         .remove([fileName]);
@@ -114,7 +114,7 @@ const { data: { publicUrl } } = supabase.storage
       }
 
       console.log('ProductService: Récupération des produits depuis Supabase...');
-      
+
       // 🚀 Sélectionner uniquement les colonnes nécessaires
       const { data, error } = await supabase
         .from('products')
@@ -137,13 +137,13 @@ const { data: { publicUrl } } = supabase.storage
       return data || [];
     } catch (error) {
       console.error('Exception getAllProducts:', error);
-      
+
       // Retourner le cache en cas d'erreur si disponible
       if (productsCache.data) {
         console.log('Utilisation du cache en fallback');
         return productsCache.data;
       }
-      
+
       throw error;
     }
   },
@@ -157,7 +157,7 @@ const { data: { publicUrl } } = supabase.storage
   async addProduct(product: Omit<Product, 'id'>): Promise<Product> {
     try {
       console.log('ProductService: Ajout produit...', product.nom);
-      
+
       const productToInsert: any = {
         nom: product.nom,
         marque: product.marque,
@@ -166,31 +166,31 @@ const { data: { publicUrl } } = supabase.storage
         image_url: product.image_url || '',
         categorie: product.categorie || 'makeup'
       };
-      
+
       if (product.quantite_reference !== undefined) {
         productToInsert.quantite_reference = product.quantite_reference;
       }
-      
+
       if (product.quantite_reelle !== undefined) {
         productToInsert.quantite_reelle = product.quantite_reelle;
       }
-      
+
       if (product.stock_unite !== undefined) {
         productToInsert.stock_unite = product.stock_unite;
       }
-      
+
       if (product.emplacement_stock !== undefined) {
         productToInsert.emplacement_stock = product.emplacement_stock;
       }
-      
+
       if (product.description !== undefined) {
         productToInsert.description = product.description;
       }
-      
+
       if (product.variant_id !== undefined) {
         productToInsert.variant_id = product.variant_id;
       }
-      
+
       const { data, error } = await supabase
         .from('products')
         .insert([productToInsert])
@@ -204,7 +204,7 @@ const { data: { publicUrl } } = supabase.storage
 
       // 🚀 Invalider le cache après ajout
       this.invalidateCache();
-      
+
       console.log('Produit ajouté:', data?.nom);
       return data;
     } catch (error) {
@@ -214,10 +214,10 @@ const { data: { publicUrl } } = supabase.storage
   },
 
   // 🚀 OPTIMISATION 5: Batch update pour le stock
-  async updateStock(productId: number, newStock: number): Promise<void> {
+  async updateStock(productId: string | number, newStock: number): Promise<void> {
     try {
       console.log(`ProductService: Mise à jour stock produit ${productId} → ${newStock}`);
-      
+
       const { error } = await supabase
         .from('products')
         .update({ stock_unite: newStock })
@@ -242,10 +242,10 @@ const { data: { publicUrl } } = supabase.storage
     }
   },
 
-  async updateProduct(productId: number, updates: Partial<Product>): Promise<void> {
+  async updateProduct(productId: string | number, updates: Partial<Product>): Promise<void> {
     try {
       console.log(`ProductService: Mise à jour produit ${productId}`, updates);
-      
+
       const { error } = await supabase
         .from('products')
         .update(updates)
@@ -258,7 +258,7 @@ const { data: { publicUrl } } = supabase.storage
 
       // 🚀 Invalider le cache après mise à jour
       this.invalidateCache();
-      
+
       console.log('Produit mis à jour');
     } catch (error) {
       console.error('Exception updateProduct:', error);
@@ -266,10 +266,10 @@ const { data: { publicUrl } } = supabase.storage
     }
   },
 
-  async deleteProduct(productId: number): Promise<void> {
+  async deleteProduct(productId: string | number): Promise<void> {
     try {
       console.log(`ProductService: Suppression produit ${productId}`);
-      
+
       const { error } = await supabase
         .from('products')
         .delete()
@@ -282,7 +282,7 @@ const { data: { publicUrl } } = supabase.storage
 
       // 🚀 Invalider le cache après suppression
       this.invalidateCache();
-      
+
       console.log('Produit supprimé');
     } catch (error) {
       console.error('Exception deleteProduct:', error);
@@ -293,7 +293,7 @@ const { data: { publicUrl } } = supabase.storage
   async saveOrder(order: Order): Promise<void> {
     try {
       console.log('ProductService: Sauvegarde commande', order.id);
-      
+
       const { error: orderError } = await supabase
         .from('orders')
         .insert([{
@@ -342,7 +342,7 @@ const { data: { publicUrl } } = supabase.storage
   async getAllOrders(): Promise<Order[]> {
     try {
       console.log('ProductService: Récupération des commandes...');
-      
+
       const { data: orders, error: ordersError } = await supabase
         .from('orders')
         .select(`
@@ -390,7 +390,7 @@ const { data: { publicUrl } } = supabase.storage
   async updateOrderStatus(orderId: string, newStatus: string): Promise<void> {
     try {
       console.log(`ProductService: Changement statut commande ${orderId} vers ${newStatus}`);
-      
+
       const { data, error } = await supabase
         .from('orders')
         .update({ status: newStatus })
@@ -414,10 +414,31 @@ const { data: { publicUrl } } = supabase.storage
     }
   },
 
+  async updateOrderPreparedItems(orderId: string, preparedItems: { [productId: string]: boolean }): Promise<void> {
+    try {
+      console.log(`ProductService: Mise à jour articles préparés commande ${orderId}`);
+
+      const { error } = await supabase
+        .from('orders')
+        .update({ prepared_items: preparedItems })
+        .eq('id', orderId);
+
+      if (error) {
+        console.error('Erreur mise à jour prepared_items Supabase:', error);
+        throw error;
+      }
+
+      console.log('Articles préparés mis à jour');
+    } catch (error) {
+      console.error('Exception updateOrderPreparedItems:', error);
+      throw error;
+    }
+  },
+
   async deleteOrder(orderId: string): Promise<void> {
     try {
       console.log(`ProductService: Suppression commande ${orderId}`);
-      
+
       const { error: itemsError } = await supabase
         .from('order_items')
         .delete()
@@ -444,7 +465,7 @@ const { data: { publicUrl } } = supabase.storage
       throw error;
     }
   },
-  
+
   // 🚀 CORRECTION: Ajouter un produit avec gestion intelligente des variantes
   async addProductWithVariant(productData: Partial<Product>): Promise<Product> {
     try {
@@ -465,24 +486,24 @@ const { data: { publicUrl } } = supabase.storage
 
       if (sameNameBrand.length > 0) {
         // Il existe déjà des produits avec ce nom/marque
-        const sameQuantity = sameNameBrand.find(p => 
+        const sameQuantity = sameNameBrand.find(p =>
           p.quantite_reelle === productData.quantite_reelle
         );
 
         if (sameQuantity) {
           // 🚀 MÊME QUANTITÉ = MÊME PRODUIT (différent emplacement)
           // Utiliser le même variant_id
-          variantId = sameQuantity.variant_id || 
-                     generateVariantId(productData.nom || '', productData.marque || '', productData.quantite_reelle);
-          
+          variantId = sameQuantity.variant_id ||
+            generateVariantId(productData.nom || '', productData.marque || '', productData.quantite_reelle);
+
           console.log('⚠️ Produit identique trouvé (même quantité) - Utilisation du même variant_id:', variantId);
         } else {
           // 🎯 QUANTITÉ DIFFÉRENTE = VRAIE VARIANTE
           // Extraire l'ID de base et ajouter la nouvelle quantité
-          const baseId = getBaseVariantId(sameNameBrand[0].variant_id || 
-                                         generateVariantId(productData.nom || '', productData.marque || ''));
+          const baseId = getBaseVariantId(sameNameBrand[0].variant_id ||
+            generateVariantId(productData.nom || '', productData.marque || ''));
           variantId = `${baseId}-${productData.quantite_reelle}ml`;
-          
+
           console.log('✅ Nouvelle variante détectée (quantité différente) - Nouveau variant_id:', variantId);
         }
       } else {
@@ -507,9 +528,9 @@ const { data: { publicUrl } } = supabase.storage
   async getSimilarProducts(nom: string, marque: string, quantiteReelle?: number): Promise<Product[]> {
     try {
       const allProducts = await this.getAllProducts();
-      
-      return allProducts.filter(product => 
-        product.nom.toLowerCase() === nom.toLowerCase() && 
+
+      return allProducts.filter(product =>
+        product.nom.toLowerCase() === nom.toLowerCase() &&
         product.marque.toLowerCase() === marque.toLowerCase() &&
         // 🚀 IMPORTANT: Si quantité fournie, filtrer aussi par quantité
         (quantiteReelle === undefined || product.quantite_reelle === quantiteReelle)
@@ -524,10 +545,10 @@ const { data: { publicUrl } } = supabase.storage
   async getProductVariants(variantId: string): Promise<Product[]> {
     try {
       const allProducts = await this.getAllProducts();
-      
+
       // Extraire l'ID de base du variant_id (retirer la quantité)
       const baseId = getBaseVariantId(variantId);
-      
+
       // Filtrer les produits qui ont le même ID de base
       const variants = allProducts.filter(product => {
         if (!product.variant_id) return false;
@@ -537,7 +558,7 @@ const { data: { publicUrl } } = supabase.storage
 
       // 🚀 IMPORTANT: Ne retourner que s'il y a plusieurs quantités différentes
       const uniqueQuantities = new Set(variants.map(v => v.quantite_reelle));
-      
+
       if (uniqueQuantities.size <= 1) {
         // Une seule quantité = pas de vraies variantes, retourner tableau vide
         console.log('⚠️ Pas de vraies variantes (même quantité pour tous)', variantId);

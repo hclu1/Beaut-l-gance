@@ -11,11 +11,11 @@ interface OrderDetailModalProps {
   onToggleItemPrepared: (orderId: string, itemId: string) => void;
 }
 
-const OrderDetailModal: React.FC<OrderDetailModalProps> = ({ 
-  order, 
-  onClose, 
-  onUpdateStatus, 
-  onToggleItemPrepared 
+const OrderDetailModal: React.FC<OrderDetailModalProps> = ({
+  order,
+  onClose,
+  onUpdateStatus,
+  onToggleItemPrepared
 }) => {
   const isItemPrepared = (itemId: string) => {
     return order.preparedItems?.[itemId] || false;
@@ -28,13 +28,13 @@ const OrderDetailModal: React.FC<OrderDetailModalProps> = ({
   const totalItems = order.items.reduce((sum, item) => sum + item.quantite_achat, 0);
 
   return (
-    <motion.div 
+    <motion.div
       className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4"
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       exit={{ opacity: 0 }}
     >
-      <motion.div 
+      <motion.div
         className="bg-white rounded-2xl p-6 max-w-2xl w-full max-h-[90vh] overflow-y-auto mx-auto"
         initial={{ scale: 0.9, y: 20 }}
         animate={{ scale: 1, y: 0 }}
@@ -86,14 +86,14 @@ const OrderDetailModal: React.FC<OrderDetailModalProps> = ({
                 <div className="text-center">
                   <span className="font-medium text-sm">Nom:</span>
                   <span className="ml-2">
-                    {order.customerInfo.nom && order.customerInfo.prenom 
+                    {order.customerInfo.nom && order.customerInfo.prenom
                       ? `${order.customerInfo.prenom} ${order.customerInfo.nom}`
                       : order.customerInfo.nom || order.customerInfo.prenom || 'Non renseigné'
                     }
                   </span>
                 </div>
               </div>
-              
+
               <div className="flex items-center justify-center gap-3">
                 <span className="text-green-600">📧</span>
                 <div className="text-center">
@@ -101,22 +101,22 @@ const OrderDetailModal: React.FC<OrderDetailModalProps> = ({
                   <span className="ml-2">{order.customerInfo.email || 'Non renseigné'}</span>
                 </div>
               </div>
-              
+
               <div className="flex items-center justify-center gap-3">
                 <span className="text-green-600">📱</span>
                 <div className="text-center">
                   <span className="font-medium text-sm">Téléphone:</span>
-                  <span className="ml-2">{order.customerInfo.phone || 'Non renseigné'}</span>
+                  <span className="ml-2">{order.customerInfo.telephone || order.customerInfo.phone || 'Non renseigné'}</span>
                 </div>
               </div>
-              
+
               <div className="flex flex-col items-center gap-2">
                 <div className="flex items-center gap-3">
                   <span className="text-green-600">📍</span>
                   <span className="font-medium text-sm">Adresse de livraison:</span>
                 </div>
                 <div className="p-2 bg-white rounded border text-sm text-center max-w-xs">
-                  {order.customerInfo.address || 'Non renseignée'}
+                  {order.customerInfo.adresse || order.customerInfo.address || 'Non renseignée'}
                 </div>
               </div>
             </div>
@@ -136,7 +136,7 @@ const OrderDetailModal: React.FC<OrderDetailModalProps> = ({
               articles préparés
             </div>
             <div className="w-full bg-orange-200 rounded-full h-3 mt-3">
-              <div 
+              <div
                 className="bg-orange-500 h-3 rounded-full transition-all duration-300"
                 style={{ width: `${totalItems > 0 ? (preparedCount / totalItems) * 100 : 0}%` }}
               ></div>
@@ -153,17 +153,15 @@ const OrderDetailModal: React.FC<OrderDetailModalProps> = ({
             {order.items.map((item, index) => {
               const isPrepared = isItemPrepared(item.id);
               return (
-                <div key={index} className={`bg-white p-4 rounded-lg border-2 transition-all duration-300 ${
-                  isPrepared ? 'border-green-400 bg-green-50' : 'border-gray-200'
-                }`}>
+                <div key={index} className={`bg-white p-4 rounded-lg border-2 transition-all duration-300 ${isPrepared ? 'border-green-400 bg-green-50' : 'border-gray-200'
+                  }`}>
                   <div className="flex items-center gap-4">
                     <motion.button
                       onClick={() => onToggleItemPrepared(order.id, item.id)}
-                      className={`w-8 h-8 rounded-full border-2 flex items-center justify-center transition-all duration-300 ${
-                        isPrepared 
-                          ? 'bg-green-500 border-green-500 text-white' 
+                      className={`w-8 h-8 rounded-full border-2 flex items-center justify-center transition-all duration-300 ${isPrepared
+                          ? 'bg-green-500 border-green-500 text-white'
                           : 'border-gray-300 hover:border-green-400 hover:bg-green-50'
-                      }`}
+                        }`}
                       whileHover={{ scale: 1.1 }}
                       whileTap={{ scale: 0.9 }}
                       title={isPrepared ? 'Marquer comme non préparé' : 'Marquer comme préparé'}
@@ -171,18 +169,16 @@ const OrderDetailModal: React.FC<OrderDetailModalProps> = ({
                       {isPrepared && <span className="text-lg">✓</span>}
                     </motion.button>
 
-                    <img 
-                      src={item.image} 
+                    <img
+                      src={item.image}
                       alt={item.nom}
-                      className={`w-16 h-16 object-cover rounded-lg transition-all duration-300 ${
-                        isPrepared ? 'opacity-75' : ''
-                      }`}
+                      className={`w-16 h-16 object-cover rounded-lg transition-all duration-300 ${isPrepared ? 'opacity-75' : ''
+                        }`}
                     />
-                    
+
                     <div className="flex-1 text-center">
-                      <h5 className={`font-semibold transition-all duration-300 ${
-                        isPrepared ? 'text-green-700 line-through' : 'text-gray-800'
-                      }`}>
+                      <h5 className={`font-semibold transition-all duration-300 ${isPrepared ? 'text-green-700 line-through' : 'text-gray-800'
+                        }`}>
                         {item.nom}
                       </h5>
                       <p className="text-sm text-gray-600">{item.marque} - {item.categorie}</p>

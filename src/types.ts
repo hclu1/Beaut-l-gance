@@ -1,24 +1,23 @@
 // Définition de l'interface Product qui représente un produit dans la boutique
 export interface Product {
-  id: number; // Identifiant unique du produit dans la base de données
-  nom: string; // Nom du produit (ex: "Rouge à lèvres mat")
+  id: string | number; // Identifiant unique du produit dans la base de données  nom: string; // Nom du produit (ex: "Rouge à lèvres mat")
   marque: string; // Marque du produit (ex: "L'Oréal")
   prix_reference: number; // Prix de référence trouvé sur internet pour la quantité de référence
   reduction: number; // Pourcentage de réduction appliqué au produit (ex: 10 pour 10%)
   image_url: string; // URL de l'image du produit stockée dans Supabase Storage
   categorie: string; // Catégorie du produit (makeup, skincare, etc.)
-  
+
   // Champs pour la gestion des stocks et des prix variables
   quantite_reference: number; // Quantité qui correspond au prix_reference (en ml ou gr)
   quantite_reelle: number; // Quantité réelle que vous avez en stock (en ml ou gr)
   stock_unite: number; // Nombre d'unités physiques disponibles en stock
   emplacement_stock?: string | string[]; // Emplacement du produit en stock (admin uniquement)
-  
+
   // Prix calculé automatiquement en fonction de la quantité réelle
   prix_reel?: number; // Prix calculé : (prix_reference / quantite_reference) * quantite_reelle
-  
+
   description?: string; // Description détaillée du produit (optionnel)
-  
+
   // Champ pour identifier les variantes d'un même produit
   variant_id?: string; // Identifiant commun pour toutes les variantes d'un même produit
 }
@@ -40,7 +39,7 @@ export interface Order {
   date: string; // Date et heure de la commande
   items: OrderItem[]; // Liste des produits inclus dans la commande
   total: number; // Montant total de la commande
-  status: 'pending' | 'preparation' | 'completed' | 'deleted'; // Statut de la commande
+  status: 'pending' | 'preparing' | 'processing' | 'ready' | 'completed' | 'delivered' | 'deleted'; // Statut de la commande
   paymentMode: string; // Mode de paiement utilisé (ex: "espece", "carte")
   customerInfo: any; // Informations sur le client (nom, prénom, email, etc.)
   preparedItems: { [productId: string]: boolean }; // État de préparation par produit
