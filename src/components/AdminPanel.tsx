@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Product, Order } from '../types';
 import { ProductService } from '../services/productService';
-import { QRCodeSVG } from 'qrcode.react'; 
+import { QRCodeSVG } from 'qrcode.react';
 
 interface AdminPanelProps {
   products: Product[];
@@ -12,10 +12,10 @@ interface AdminPanelProps {
   setAdmin: React.Dispatch<React.SetStateAction<boolean>>;
 }
 
-const AdminPanel: React.FC<AdminPanelProps> = ({ 
-  products = [], 
-  setProducts, 
-  orders = [], 
+const AdminPanel: React.FC<AdminPanelProps> = ({
+  products = [],
+  setProducts,
+  orders = [],
   setOrders,
   onReloadProducts,
   setAdmin
@@ -117,10 +117,10 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
       const compressedFile = await compressImage(file, 800, 0.8);
       const imageUrl = await ProductService.uploadImage(compressedFile);
       setPreviewImageUrl(imageUrl);
-      if (isEditing && editingProduct) { setEditingProduct({...editingProduct, image_url: imageUrl}); } 
-      else { setNewProduct(prev => ({...prev, image_url: imageUrl})); }
+      if (isEditing && editingProduct) { setEditingProduct({ ...editingProduct, image_url: imageUrl }); }
+      else { setNewProduct(prev => ({ ...prev, image_url: imageUrl })); }
       alert('Image uploadée !');
-    } catch (error) { console.error(error); alert('Erreur upload'); } 
+    } catch (error) { console.error(error); alert('Erreur upload'); }
     finally { setUploadingImage(false); }
   };
 
@@ -181,7 +181,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
 
   const handleDeleteProduct = async (id: string | number) => {
     if (!confirm('Supprimer ?')) return;
-    try { await ProductService.deleteProduct(id); if (onReloadProducts) await onReloadProducts(); alert('Supprimé'); } 
+    try { await ProductService.deleteProduct(id); if (onReloadProducts) await onReloadProducts(); alert('Supprimé'); }
     catch (e) { console.error(e); alert('Erreur suppression'); }
   };
 
@@ -254,14 +254,14 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
             <p className="text-sm text-gray-600 mb-4">
               Scannez ce code pour ouvrir l'application sur un autre appareil.
             </p>
-            
+
             <div className="flex flex-col items-center justify-center gap-4">
               {syncUrl && (
                 <div className="bg-white p-4 rounded border shadow-sm">
                   <QRCodeSVG value={syncUrl} size={180} level={"M"} includeMargin={true} />
                 </div>
               )}
-              
+
               <div className="w-full max-w-md">
                 <input
                   type="text"
@@ -299,45 +299,45 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
                         {(() => {
                           const img = previewImageUrl || editingProduct?.image_url || newProduct.image_url;
                           return img ? (
-                            <div className="space-y-2"><img src={img} className="w-32 h-32 object-cover rounded border mx-auto" /><button onClick={() => { setPreviewImageUrl(''); if(editingProduct) setEditingProduct({...editingProduct, image_url:''}); else setNewProduct({...newProduct, image_url:''}); }} className="text-red-500 text-sm">Supprimer</button></div>
+                            <div className="space-y-2"><img src={img} className="w-32 h-32 object-cover rounded border mx-auto" /><button onClick={() => { setPreviewImageUrl(''); if (editingProduct) setEditingProduct({ ...editingProduct, image_url: '' }); else setNewProduct({ ...newProduct, image_url: '' }); }} className="text-red-500 text-sm">Supprimer</button></div>
                           ) : (
                             <div className="text-gray-400 text-4xl">📸</div>
                           );
                         })()}
-                        <input type="file" accept="image/*" onChange={async (e) => { const f = e.target.files?.[0]; if(f) { await handleImageUpload(f, !!editingProduct); e.target.value = ''; } }} className="mt-2 block w-full text-sm" disabled={uploadingImage} />
+                        <input type="file" accept="image/*" onChange={async (e) => { const f = e.target.files?.[0]; if (f) { await handleImageUpload(f, !!editingProduct); e.target.value = ''; } }} className="mt-2 block w-full text-sm" disabled={uploadingImage} />
                       </div>
                     </div>
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      <div><label className="block text-sm font-medium text-gray-700">Nom</label><input type="text" value={editingProduct?.nom ?? newProduct.nom} onChange={e => { if(editingProduct) setEditingProduct({...editingProduct, nom:e.target.value}); else setNewProduct({...newProduct, nom:e.target.value}); }} className="w-full p-2 border rounded text-sm" /></div>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                      <div><label className="block text-sm font-medium text-gray-700">Nom</label><input type="text" value={editingProduct?.nom ?? newProduct.nom} onChange={e => { if (editingProduct) setEditingProduct({ ...editingProduct, nom: e.target.value }); else setNewProduct({ ...newProduct, nom: e.target.value }); }} className="w-full p-2 border rounded text-sm" /></div>
                       <div><label className="block text-sm font-medium text-gray-700">Marque</label>
                         {!isAddingNewBrand ? (
-                          <select value={editingProduct?.marque ?? newProduct.marque} onChange={e => { const v=e.target.value; if(v==='__custom__'){setIsAddingNewBrand(true); setNewBrandInput('');}else{setIsAddingNewBrand(false); if(editingProduct) setEditingProduct({...editingProduct, marque:v}); else setNewProduct({...newProduct, marque:v});} }} className="w-full p-2 border rounded text-sm">
+                          <select value={editingProduct?.marque ?? newProduct.marque} onChange={e => { const v = e.target.value; if (v === '__custom__') { setIsAddingNewBrand(true); setNewBrandInput(''); } else { setIsAddingNewBrand(false); if (editingProduct) setEditingProduct({ ...editingProduct, marque: v }); else setNewProduct({ ...newProduct, marque: v }); } }} className="w-full p-2 border rounded text-sm">
                             <option value="">-- Sélectionner --</option>
                             {allBrands.map(b => <option key={b} value={b}>{b}</option>)}
                             <option value="__custom__">+ Nouvelle</option>
                           </select>
                         ) : (
-                          <div className="flex gap-2"><input value={newBrandInput} onChange={e=>setNewBrandInput(e.target.value)} className="flex-1 p-2 border rounded text-sm border-green-500" /><button onClick={()=>{ if(newBrandInput.trim()){ if(editingProduct) setEditingProduct({...editingProduct, marque:newBrandInput.trim()}); else setNewProduct({...newProduct, marque:newBrandInput.trim()}); } setIsAddingNewBrand(false); setNewBrandInput(''); }} className="bg-green-500 text-white px-2 rounded">✓</button></div>
+                          <div className="flex gap-2"><input value={newBrandInput} onChange={e => setNewBrandInput(e.target.value)} className="flex-1 p-2 border rounded text-sm border-green-500" /><button onClick={() => { if (newBrandInput.trim()) { if (editingProduct) setEditingProduct({ ...editingProduct, marque: newBrandInput.trim() }); else setNewProduct({ ...newProduct, marque: newBrandInput.trim() }); } setIsAddingNewBrand(false); setNewBrandInput(''); }} className="bg-green-500 text-white px-2 rounded">✓</button></div>
                         )}
                       </div>
-                      <div><label className="block text-sm font-medium text-gray-700">Prix Ref (€)</label><input type="number" step="0.01" value={editingProduct?.prix_reference ?? newProduct.prix_reference} onChange={e => { const v=parseFloat(e.target.value); if(editingProduct) setEditingProduct({...editingProduct, prix_reference:isNaN(v)?0:v}); else setNewProduct({...newProduct, prix_reference:isNaN(v)?0:v}); }} className="w-full p-2 border rounded text-sm" /></div>
-                      <div><label className="block text-sm font-medium text-gray-700">Qté Ref (ml)</label><input type="number" value={editingProduct?.quantite_reference ?? newProduct.quantite_reference} onChange={e => { const v=parseFloat(e.target.value); if(editingProduct) setEditingProduct({...editingProduct, quantite_reference:isNaN(v)?0:v}); else setNewProduct({...newProduct, quantite_reference:isNaN(v)?0:v}); }} className="w-full p-2 border rounded text-sm" /></div>
-                      <div><label className="block text-sm font-medium text-gray-700">Qté Réelle (ml)</label><input type="number" value={editingProduct?.quantite_reelle ?? newProduct.quantite_reelle} onChange={e => { const v=parseFloat(e.target.value); if(editingProduct) setEditingProduct({...editingProduct, quantite_reelle:isNaN(v)?0:v}); else setNewProduct({...newProduct, quantite_reelle:isNaN(v)?0:v}); }} className="w-full p-2 border rounded text-sm" /></div>
-                      <div><label className="block text-sm font-medium text-gray-700">Réduction (%)</label><input type="number" value={editingProduct?.reduction ?? newProduct.reduction} onChange={e => { const v=parseInt(e.target.value); if(editingProduct) setEditingProduct({...editingProduct, reduction:isNaN(v)?0:v}); else setNewProduct({...newProduct, reduction:isNaN(v)?0:v}); }} className="w-full p-2 border rounded text-sm" /></div>
-                      <div><label className="block text-sm font-medium text-gray-700">Catégorie</label><select value={editingProduct?.categorie ?? newProduct.categorie} onChange={e => { if(editingProduct) setEditingProduct({...editingProduct, categorie:e.target.value as any}); else setNewProduct({...newProduct, categorie:e.target.value as any}); }} className="w-full p-2 border rounded text-sm"><option value="makeup">Maquillage</option><option value="skincare">Soins Visage</option><option value="bodycare">Soins Corps</option><option value="haircare">Cheveux</option><option value="fragrance">Parfums</option><option value="accessories">Accessoires</option></select></div>
+                      <div><label className="block text-sm font-medium text-gray-700">Prix Ref (€)</label><input type="number" step="0.01" value={editingProduct?.prix_reference ?? newProduct.prix_reference} onChange={e => { const v = parseFloat(e.target.value); if (editingProduct) setEditingProduct({ ...editingProduct, prix_reference: isNaN(v) ? 0 : v }); else setNewProduct({ ...newProduct, prix_reference: isNaN(v) ? 0 : v }); }} className="w-full p-2 border rounded text-sm" /></div>
+                      <div><label className="block text-sm font-medium text-gray-700">Qté Ref (ml)</label><input type="number" value={editingProduct?.quantite_reference ?? newProduct.quantite_reference} onChange={e => { const v = parseFloat(e.target.value); if (editingProduct) setEditingProduct({ ...editingProduct, quantite_reference: isNaN(v) ? 0 : v }); else setNewProduct({ ...newProduct, quantite_reference: isNaN(v) ? 0 : v }); }} className="w-full p-2 border rounded text-sm" /></div>
+                      <div><label className="block text-sm font-medium text-gray-700">Qté Réelle (ml)</label><input type="number" value={editingProduct?.quantite_reelle ?? newProduct.quantite_reelle} onChange={e => { const v = parseFloat(e.target.value); if (editingProduct) setEditingProduct({ ...editingProduct, quantite_reelle: isNaN(v) ? 0 : v }); else setNewProduct({ ...newProduct, quantite_reelle: isNaN(v) ? 0 : v }); }} className="w-full p-2 border rounded text-sm" /></div>
+                      <div><label className="block text-sm font-medium text-gray-700">Réduction (%)</label><input type="number" value={editingProduct?.reduction ?? newProduct.reduction} onChange={e => { const v = parseInt(e.target.value); if (editingProduct) setEditingProduct({ ...editingProduct, reduction: isNaN(v) ? 0 : v }); else setNewProduct({ ...newProduct, reduction: isNaN(v) ? 0 : v }); }} className="w-full p-2 border rounded text-sm" /></div>
+                      <div><label className="block text-sm font-medium text-gray-700">Catégorie</label><select value={editingProduct?.categorie ?? newProduct.categorie} onChange={e => { if (editingProduct) setEditingProduct({ ...editingProduct, categorie: e.target.value as any }); else setNewProduct({ ...newProduct, categorie: e.target.value as any }); }} className="w-full p-2 border rounded text-sm"><option value="makeup">Maquillage</option><option value="skincare">Soins Visage</option><option value="bodycare">Soins Corps</option><option value="haircare">Cheveux</option><option value="fragrance">Parfums</option><option value="accessories">Accessoires</option></select></div>
                     </div>
                     <div className="bg-green-50 p-4 rounded border-2 border-green-300">
                       <label className="text-sm font-bold text-green-800">Prix Final</label>
                       <div className="text-2xl font-bold text-green-600">
-                        {calculateRealPrice(parseFloat(String(editingProduct?.prix_reference ?? newProduct.prix_reference))||0, parseFloat(String(editingProduct?.quantite_reference ?? newProduct.quantite_reference))||1, parseFloat(String(editingProduct?.quantite_reelle ?? newProduct.quantite_reelle))||1, editingProduct?.reduction ?? newProduct.reduction).toFixed(2)}€
+                        {calculateRealPrice(parseFloat(String(editingProduct?.prix_reference ?? newProduct.prix_reference)) || 0, parseFloat(String(editingProduct?.quantite_reference ?? newProduct.quantite_reference)) || 1, parseFloat(String(editingProduct?.quantite_reelle ?? newProduct.quantite_reelle)) || 1, editingProduct?.reduction ?? newProduct.reduction).toFixed(2)}€
                       </div>
                     </div>
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      <div><label className="block text-sm font-medium text-gray-700">Stock</label><input type="number" value={editingProduct?.stock_unite ?? newProduct.stock_unite} onChange={e => { const v=parseInt(e.target.value); if(editingProduct) setEditingProduct({...editingProduct, stock_unite:isNaN(v)?0:v}); else setNewProduct({...newProduct, stock_unite:isNaN(v)?0:v}); }} className="w-full p-2 border rounded text-sm" /></div>
-                      <div><label className="block text-sm font-medium text-gray-700">Emplacement</label><input type="text" value={(editingProduct?.emplacement_stock ?? newProduct.emplacement_stock) || ''} onChange={e => { if(editingProduct) setEditingProduct({...editingProduct, emplacement_stock:e.target.value}); else setNewProduct({...newProduct, emplacement_stock:e.target.value}); }} className="w-full p-2 border rounded text-sm" /></div>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                      <div><label className="block text-sm font-medium text-gray-700">Stock</label><input type="number" value={editingProduct?.stock_unite ?? newProduct.stock_unite} onChange={e => { const v = parseInt(e.target.value); if (editingProduct) setEditingProduct({ ...editingProduct, stock_unite: isNaN(v) ? 0 : v }); else setNewProduct({ ...newProduct, stock_unite: isNaN(v) ? 0 : v }); }} className="w-full p-2 border rounded text-sm" /></div>
+                      <div><label className="block text-sm font-medium text-gray-700">Emplacement</label><input type="text" value={(editingProduct?.emplacement_stock ?? newProduct.emplacement_stock) || ''} onChange={e => { if (editingProduct) setEditingProduct({ ...editingProduct, emplacement_stock: e.target.value }); else setNewProduct({ ...newProduct, emplacement_stock: e.target.value }); }} className="w-full p-2 border rounded text-sm" /></div>
                     </div>
-                    <div><label className="block text-sm font-medium text-gray-700">Description</label><textarea value={editingProduct?.description ?? newProduct.description} onChange={e => { if(editingProduct) setEditingProduct({...editingProduct, description:e.target.value}); else setNewProduct({...newProduct, description:e.target.value}); }} className="w-full p-2 border rounded text-sm" rows={3} /></div>
-                    <div className="flex gap-2 mt-4">
+                    <div><label className="block text-sm font-medium text-gray-700">Description</label><textarea value={editingProduct?.description ?? newProduct.description} onChange={e => { if (editingProduct) setEditingProduct({ ...editingProduct, description: e.target.value }); else setNewProduct({ ...newProduct, description: e.target.value }); }} className="w-full p-2 border rounded text-sm" rows={3} /></div>
+                    <div className="flex flex-wrap gap-2 mt-4">
                       {editingProduct ? (
                         <><button onClick={handleUpdateProduct} className="px-4 py-2 bg-orange-500 text-white rounded">Modifier</button><button onClick={() => { setEditingProduct(null); setPreviewImageUrl(''); }} className="px-4 py-2 bg-gray-500 text-white rounded">Annuler</button></>
                       ) : (
@@ -348,7 +348,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
                 )}
               </div>
               <div className="mb-4 flex gap-2">
-                <select value={selectedBrandOrEmplacement} onChange={e => { setSelectedBrandOrEmplacement(e.target.value); if(e.target.value!=='all') setFormCollapsed(true); }} className="px-3 py-2 border rounded text-sm">
+                <select value={selectedBrandOrEmplacement} onChange={e => { setSelectedBrandOrEmplacement(e.target.value); if (e.target.value !== 'all') setFormCollapsed(true); }} className="px-3 py-2 border rounded text-sm">
                   <option value="all">Tous</option>
                   <optgroup label="Marque">{allBrands.map(b => <option key={b} value={`brand:${b}`}>{b}</option>)}</optgroup>
                   <optgroup label="Emplacement">{allEmplacements.map(e => <option key={e} value={`emp:${e}`}>{e}</option>)}</optgroup>
@@ -370,7 +370,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
                       </div>
                     </div>
                     <div className="flex gap-1">
-                      <button onClick={() => { setEditingProduct(product); setPreviewImageUrl(product.image_url||''); }} className="bg-blue-500 text-white px-2 py-1 rounded text-xs">✏️</button>
+                      <button onClick={() => { setEditingProduct(product); setPreviewImageUrl(product.image_url || ''); }} className="bg-blue-500 text-white px-2 py-1 rounded text-xs">✏️</button>
                       <button onClick={() => handleDeleteProduct(product.id)} className="bg-red-500 text-white px-2 py-1 rounded text-xs">🗑️</button>
                       <button onClick={() => handleDuplicateProduct(product)} className="bg-purple-500 text-white px-2 py-1 rounded text-xs">🔗</button>
                     </div>
@@ -387,7 +387,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
                       ))}
                     </div>
                     <div className="flex gap-2">
-                      <button onClick={() => { const c = document.querySelectorAll('input[type="checkbox"]'); const s = [variantBaseProduct, ...similarProducts].filter((_,i) => i < c.length && (c[i] as HTMLInputElement).checked); handleCreateVariantGroup(s); }} className="bg-green-500 text-white px-4 py-2 rounded">Créer</button>
+                      <button onClick={() => { const c = document.querySelectorAll('input[type="checkbox"]'); const s = [variantBaseProduct, ...similarProducts].filter((_, i) => i < c.length && (c[i] as HTMLInputElement).checked); handleCreateVariantGroup(s); }} className="bg-green-500 text-white px-4 py-2 rounded">Créer</button>
                       <button onClick={() => { setAddingVariant(false); setVariantBaseProduct(null); }} className="bg-gray-500 text-white px-4 py-2 rounded">Annuler</button>
                     </div>
                   </div>
@@ -407,7 +407,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
                       <p className="text-xs text-gray-500">{order.date}</p>
                     </div>
                     <div className="flex gap-2">
-                      <select value={order.status} onChange={e => handleOrderStatusChange(order.id, e.target.value)} className={`px-2 py-1 rounded text-xs font-bold ${order.status==='completed'?'bg-green-100 text-green-800':order.status==='processing'?'bg-yellow-100 text-yellow-800':'bg-gray-100'}`}><option value="pending">En attente</option><option value="processing">Préparation</option><option value="completed">Terminée</option></select>
+                      <select value={order.status} onChange={e => handleOrderStatusChange(order.id, e.target.value)} className={`px-2 py-1 rounded text-xs font-bold ${order.status === 'completed' ? 'bg-green-100 text-green-800' : order.status === 'processing' ? 'bg-yellow-100 text-yellow-800' : 'bg-gray-100'}`}><option value="pending">En attente</option><option value="processing">Préparation</option><option value="completed">Terminée</option></select>
                       <button onClick={() => handleDeleteOrder(order.id)} className="bg-red-500 text-white px-2 py-1 rounded text-xs">🗑️</button>
                     </div>
                   </div>
@@ -415,9 +415,9 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
                     {order.items.map((item, i) => {
                       const isPrepared = order.preparedItems?.[item.id];
                       return (
-                        <div key={i} className={`flex justify-between p-2 rounded text-xs border ${isPrepared?'bg-green-50 border-green-200':'bg-gray-50'}`}>
-                          <div className="flex items-center gap-2"><input type="checkbox" checked={!!isPrepared} onChange={() => togglePreparedItem(order.id, item.id)} className="w-4 h-4" /><span className={isPrepared?'line-through text-gray-500':''}>{item.nom} x{item.quantite_achat||1}</span></div>
-                          <span className="font-bold">{((item.prix_reference/(item.quantite_reference||1))*(item.quantite_reelle||item.quantite_reference)*(1-(item.reduction||0)/100)*(item.quantite_achat||1)).toFixed(2)}€</span>
+                        <div key={i} className={`flex justify-between p-2 rounded text-xs border ${isPrepared ? 'bg-green-50 border-green-200' : 'bg-gray-50'}`}>
+                          <div className="flex items-center gap-2"><input type="checkbox" checked={!!isPrepared} onChange={() => togglePreparedItem(order.id, item.id)} className="w-4 h-4" /><span className={isPrepared ? 'line-through text-gray-500' : ''}>{item.nom} x{item.quantite_achat || 1}</span></div>
+                          <span className="font-bold">{((item.prix_reference / (item.quantite_reference || 1)) * (item.quantite_reelle || item.quantite_reference) * (1 - (item.reduction || 0) / 100) * (item.quantite_achat || 1)).toFixed(2)}€</span>
                         </div>
                       );
                     })}
