@@ -70,8 +70,8 @@ const App: React.FC = () => {
   }, [orders]);
 
   const qrCodeUrl = useMemo(() => {
-    const currentUrl = window.location.href.split('?')[0];
-    return `https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(currentUrl)}`;
+    const shopUrl = 'https://beaut-l-gance.vercel.app';
+    return `https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(shopUrl)}`;
   }, []);
 
   useEffect(() => {
