@@ -70,7 +70,7 @@ const App: React.FC = () => {
   }, [orders]);
 
   const qrCodeUrl = useMemo(() => {
-    const shopUrl = 'https://vente-1.vercel.app';
+    const shopUrl = 'https://beaut-l-gance.vercel.app';
     return `https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(shopUrl)}`;
   }, []);
 
